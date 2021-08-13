@@ -1,25 +1,53 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
-  "icons": [
-    {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "logo192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "logo512.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    }
+  "manifest_version": 2,
+  "name": "Grindery Payroll",
+  "description": "Decentralized Payroll",
+  "version": "0.1.7",
+  "author": "https://grindery.io",
+  "icons": {
+    "16": "logo.png",
+    "48": "logo.png",
+    "128": "logo.png"
+  },
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "identity",
+    "notifications"
   ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "browser_action": {
+    "default_popup": "index.html",
+    "default_title": "Grindery Payroll"
+  },
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "commands": {
+    "_execute_browser_action": {
+      "suggested_key": {
+        "windows": "Alt+Shift+P",
+        "mac": "Alt+Shift+P",
+        "chromeos": "Alt+Shift+P",
+        "linux": "Alt+Shift+P"
+      }
+    }
+  },
+  "content_security_policy": "script-src 'self'; object-src 'self'",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAgHHDHGS6hGah84LpBsGpX2NrUIxx+/G8er9hJQTAE6FBrm+zK4xBHBRUqBGblXs90nmdgDxLuaS+jP3bjtYXg9quQnaef2Lt7DH01taGn2/HgfQqCc9tDs+kyA9kNjC4PFFCy2OPO7vnovqVjntFr1WUcKDQAoCLiF0XoFPg+7e60liDcvsl7eKu4UzKFxHMlTbvZTBGCGkwEbrybbMr/nktFLw30o+tHZWSRLfxxdd+HE2TcWETj2y9tyW9tVOk2fBzKN9rwLhm4f6zV1Gq5pGJ15II/vED0tlrGimnLvCr4BHGSqR5G38Vim0BOIWS4I1h94Thv/lZ4SXsX+YJbQIDAQAB",
+  "oauth2": {
+    "client_id": "137263933184-mf9ip4j1gnf72sbhkevosr0r88lku1hd.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.readonly",
+      "https://www.googleapis.com/auth/spreadsheets"
+    ]
+  },
+  "externally_connectable": {
+    "matches": [
+      "https://metamask.io/*"
+    ],
+    "ids": [
+      "*"
+    ]
+  }
 }

@@ -193,7 +193,10 @@ module.exports = function (webpackEnv) {
             // initialization, it doesn't blow up the WebpackDevServer client, and
             // changing JS code would still trigger a refresh.
           ]
-        : paths.appIndexJs,
+        : {
+          main: paths.appIndexJs,
+          background: paths.appBackgroundJs,
+        },
     output: {
       // The build folder.
       path: isEnvProduction ? paths.appBuild : undefined,
@@ -201,9 +204,15 @@ module.exports = function (webpackEnv) {
       pathinfo: isEnvDevelopment,
       // There will be one main bundle, and one file per asynchronous chunk.
       // In development, it does not produce real files.
-      filename: isEnvProduction
-        ? 'static/js/[name].[contenthash:8].js'
-        : isEnvDevelopment && 'static/js/bundle.js',
+      filename: (pathData, assetInfo) => {
+        const isBackgroundScript = /(.-)*background$/i.test(pathData && pathData.chunk && pathData.chunk.name);
+        if(isBackgroundScript) {
+          return 'background.js';
+        }
+        return 'static/js/' + (isEnvProduction
+          ? '[name].[contenthash:8].js'
+          : isEnvDevelopment && 'bundle.js');
+      },
       // TODO: remove this when upgrading to webpack 5
       futureEmitAssets: true,
       // There are also additional JS chunk files if you use code splitting.
@@ -296,16 +305,18 @@ module.exports = function (webpackEnv) {
       // Automatically split vendor and commons
       // https://twitter.com/wSokra/status/969633336732905474
       // https://medium.com/webpack/webpack-4-code-splitting-chunk-graph-and-the-splitchunks-optimization-be739a861366
-      splitChunks: {
+      splitChunks: false /*{
+        // TODO: Disable only for background script
         chunks: 'all',
         name: isEnvDevelopment,
-      },
+      }*/,
       // Keep the runtime chunk separated to enable long term caching
       // https://twitter.com/wSokra/status/969679223278505985
       // https://github.com/facebook/create-react-app/issues/5358
-      runtimeChunk: {
+      runtimeChunk: false /*{
+        // TODO: Disable only for background script
         name: entrypoint => `runtime-${entrypoint.name}`,
-      },
+      }*/,
     },
     resolve: {
       // This allows you to set a fallback for where webpack should look for modules.
@@ -564,6 +575,7 @@ module.exports = function (webpackEnv) {
           {
             inject: true,
             template: paths.appHtml,
+            excludeChunks: ['background'],
           },
           isEnvProduction
             ? {
