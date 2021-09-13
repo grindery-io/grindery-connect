@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Grindery Payroll",
   "description": "Decentralized Payroll",
-  "version": "0.1.7",
+  "version": "0.2.3",
   "author": "https://grindery.io",
   "icons": {
     "16": "logo.png",
@@ -13,10 +13,12 @@
     "storage",
     "unlimitedStorage",
     "identity",
-    "notifications"
+    "notifications",
+    "activeTab",
+    "scripting",
+    "tabs"
   ],
   "browser_action": {
-    "default_popup": "index.html",
     "default_title": "Grindery Payroll"
   },
   "background": {
@@ -49,5 +51,8 @@
     "ids": [
       "*"
     ]
-  }
+  },
+  "web_accessible_resources": [
+    "index.html"
+  ]
 }

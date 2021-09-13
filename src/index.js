@@ -1,3 +1,4 @@
+/*global chrome*/
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {CssBaseline, ThemeProvider} from '@material-ui/core';
@@ -25,7 +26,7 @@ ReactDOM.render(
       </MuiPickersUtilsProvider>
     </ThemeProvider>
   </React.StrictMode>,
-  document.getElementById('root')
+  document.getElementById('grindery-payroll-extension-root')
 );
 
 // If you want to start measuring performance in your app, pass a function

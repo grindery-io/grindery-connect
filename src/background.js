@@ -2,7 +2,7 @@
 import Web3 from 'web3';
 import moment from 'moment';
 
-import {MESSAGE_TYPES, NOTIFICATIONS, TASKS} from './helpers/contants';
+import {MESSAGE_TYPES, NOTIFICATIONS, TASKS, WALLET_EVENTS} from './helpers/contants';
 import {getAccounts, getBalance, getNetwork, requestAccounts} from './helpers/metamask';
 import {
   getTransactions,
@@ -12,7 +12,12 @@ import {
   saveTransaction,
   saveTransactions
 } from './helpers/storage';
-import {getWeb3Instance, sendExtensionNotification, syncContactsWithGoogleSheets} from './helpers/routines';
+import {
+  getWeb3Instance,
+  sendExtensionEvent,
+  sendExtensionNotification,
+  syncContactsWithGoogleSheets
+} from './helpers/routines';
 import {ERROR_MESSAGES} from './helpers/errors';
 import {getNetworkExplorerUrl, getPaymentsTotal} from './helpers/utils';
 
@@ -21,7 +26,14 @@ const isPopUpOpen = () => {
   return popups && Array.isArray(popups) && popups.length;
 };
 
-
+chrome.browserAction.onClicked.addListener((tab) => {
+  if(tab && tab.id) {
+    chrome.tabs.executeScript(tab.id,{
+      file: 'content.js'
+    }, () => {
+    });
+  }
+});
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if(chrome.runtime.lastError) {
@@ -64,6 +76,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             })
             .catch(e => sendErrorResponse(e));
           return true;
+        }
+        case TASKS.LISTEN_FOR_WALLET_EVENTS: {
+          const {events} = payload || {};
+          if(web3.currentProvider && events && Array.isArray(events) && events.length) {
+            for (const eventName of events) {
+              web3.currentProvider.on(eventName, res => {
+                sendExtensionEvent(eventName, {data: res}).catch(() => {});
+              });
+            }
+          }
         }
         case TASKS.GET_NETWORK: {
           getNetwork(web3)

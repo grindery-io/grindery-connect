@@ -17,15 +17,14 @@ const useStyles = makeStyles((theme) => ({
     lineHeight: 1.6,
   },
   header: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: 'bold',
-    lineHeight: 1.6,
-    textAlign: 'center',
-    marginBottom: theme.spacing(5),
+    lineHeight: 1,
+    margin: theme.spacing(0.5, 0, 4, 0),
   },
   integration: {
-    padding: theme.spacing(2.75),
-    borderBottom: '1px solid #D3DEEC',
+    padding: theme.spacing(2.75, 0),
+    boxShadow: 'inset 0 -1px 0px rgba(0, 0, 0, 0.1)',
     '& > *:not(:last-child)': {
       marginBottom: theme.spacing(3.25),
     },
@@ -47,7 +46,7 @@ const useStyles = makeStyles((theme) => ({
   },
   about: {
     color: theme.palette.text.secondary,
-    padding: theme.spacing(2.75),
+    padding: theme.spacing(2.75, 0),
   }
 }));
 
@@ -98,7 +97,7 @@ export default () => {
 
   return (
     <div className={classes.container}>
-      <Typography variant="h2" component="h2" className={classes.header}>Sync Contacts & Payrolls</Typography>
+      <div className={classes.header}>General Settings</div>
 
       {loading && (
         <div className={classes.loading}>
@@ -108,10 +107,10 @@ export default () => {
         error && (
           <Alert severity="error">{error || ERROR_MESSAGES.READ_INTEGRATIONS_FAILED}</Alert>
         ) || (
-          [INTEGRATIONS.GOOGLE_SHEETS, INTEGRATIONS.GUSTO].map(name => {
-            const isConnected = (integrations || {})[name];
-            const integrationLogo = getIntegrationDetails(name, 'logo');
-            const isDisabled = name === INTEGRATIONS.GUSTO;
+          [INTEGRATIONS.GOOGLE_SHEETS, INTEGRATIONS.CIRCLE, INTEGRATIONS.GUSTO].map(name => {
+            const isConnected = (integrations || {})[name],
+              integrationLogo = getIntegrationDetails(name, 'logo'),
+              isDisabled = name !== INTEGRATIONS.GOOGLE_SHEETS;
             return (
               <div key={name} className={classes.integration}>
                 <Grid container
@@ -120,7 +119,7 @@ export default () => {
                       alignItems="center">
                   <img src={integrationLogo} height={35}/>
                   <Button type="button"
-                          color={isConnected?'primary':'secondary'}
+                          color="primary"
                           variant="contained"
                           disabled={isDisabled}
                           onClick={() => isConnected?onDisconnect(name):onConnect(name)}>

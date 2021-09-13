@@ -4,6 +4,7 @@ import AddContact from '../dialogs/AddContact';
 import AddPayment from '../dialogs/AddPayment';
 import MakePayout from '../dialogs/MakePayout';
 import ConnectGoogleSheet from '../dialogs/ConnectGoogleSheet';
+import TransactionDetails from '../dialogs/TransactionDetails';
 
 import AppContext from '../../AppContext';
 
@@ -35,6 +36,11 @@ export default () => {
     case DIALOG_ACTIONS.CONNECT_GOOGLE_SHEET: {
       return (
         <ConnectGoogleSheet {...data}/>
+      );
+    }
+    case DIALOG_ACTIONS.SHOW_TRANSACTION_DETAILS: {
+      return (
+        <TransactionDetails {...data}/>
       );
     }
     default: {

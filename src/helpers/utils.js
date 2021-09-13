@@ -8,7 +8,7 @@ import SHA256 from 'crypto-js/sha256';
 
 import cachedChains from './chains.json';
 
-import {INTEGRATION_DETAILS, SCREEN_DETAILS} from './contants';
+import {INTEGRATION_DETAILS, PAYMENT_DUE_STATES, SCREEN_DETAILS} from './contants';
 
 export const generateVersionedHash = (value, legacy=false) => {
   if(legacy) {
@@ -80,6 +80,19 @@ export const stripTimeFromDate = date => {
   return moment.utc(date || undefined).format('YYYY-MM-DD');
 };
 
+export const getPaymentDueState = payment => {
+  if(payment.due_date) {
+    const now = moment.utc(stripTimeFromDate(moment.utc().format())),
+      dueDate = moment.utc(stripTimeFromDate(payment.due_date));
+    if(dueDate.format() === now.format()) {
+      return PAYMENT_DUE_STATES.DUE_TODAY;
+    } else {
+      return dueDate > now?PAYMENT_DUE_STATES.DUE_SOON:PAYMENT_DUE_STATES.OVERDUE;
+    }
+  }
+  return PAYMENT_DUE_STATES.DUE_TODAY; // Default to Due Today
+};
+
 export const getPaymentDueDisplay = payment => {
   let segments = [];
   if(payment.due_date) {
@@ -135,7 +148,7 @@ export const transactionFinder = (transactions, payment) => {
   }) || null;
 };
 
-export const filterPendingPayments = (payments, transactions) => {
+export const getPendingPayments = (payments, transactions) => {
   return (payments || []).filter(payment => {
     const transaction = transactionFinder(transactions, payment) || null;
     return payment.amount && !transaction;
@@ -192,4 +205,72 @@ export const getPriceData = async currencySymbol => {
   }).catch(e => {
     throw e;
   });
+};
+
+export const searchItems = (query, items, fields, orderBy, sortDirection) => {
+  if(!query) {
+    return items;
+  }
+
+  const getFieldValue = (item, field) => {
+    const subFields = (field || '').split('.');
+    if(subFields.length > 1) {
+      let subItem = item;
+      for (const subField of subFields) {
+        if(Array.isArray(subItem)) {
+          subItem = subItem.map(i => i && i[subField] || null).filter(Boolean);
+        } else {
+          subItem = subItem && subItem[subField] || null;
+        }
+      }
+      return subItem;
+    }
+    return item[field] || '';
+  };
+
+  const querySegments = _.uniq([query, ...(query || '').split(/\s+/)]),
+    searchRegex = new RegExp(`${querySegments.map(i => i && `(${i})` || null).filter(i => i).join('|')}`, 'i'),
+    firstCharSearch = (query || '').charAt(0).toLowerCase();
+
+  let results = (items || []).map(item => {
+    if (item) {
+      let rank = 0;
+
+      for (const field of fields) {
+        let fieldValue = getFieldValue(item, field);
+        for (const value of (fieldValue && Array.isArray(fieldValue)?fieldValue:[fieldValue])) {
+          if((query || '').toLowerCase() === (value || '').toLowerCase()) {
+            // Exact match
+            rank += 2;
+          }
+          // Regex match
+          if(searchRegex.test(value)) {
+            rank += 1;
+            const fieldValueFirst = (value || '').charAt(0).toLowerCase();
+            // First character match
+            if(fieldValueFirst === firstCharSearch) {
+              rank += 0.5;
+            }
+          }
+        }
+      }
+
+      if(!query || rank > 0) {
+        return {
+          ...(item || {}),
+          rank,
+        };
+      }
+    }
+    return null;
+  }).filter(i => i);
+  const cleanedOrderBy = (orderBy && Array.isArray(orderBy)?orderBy:[]).filter(i => typeof i === 'string');
+  let cleanedSortDirection = (sortDirection && Array.isArray(sortDirection)?sortDirection:[]).filter(i => ['asc', 'desc'].includes(i));
+  for (const [idx,] of cleanedOrderBy.entries()) {
+    if(!['asc', 'desc'].includes(cleanedSortDirection[idx])) {
+      cleanedSortDirection[idx] = 'asc';
+    }
+  }
+  results = _.orderBy(results, ['rank', ...cleanedOrderBy], ['desc', ...cleanedSortDirection]);
+  return results;
 };

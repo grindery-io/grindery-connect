@@ -10,6 +10,7 @@ import {
 import {Cancel as CancelIcon, CheckCircle as CheckCircleIcon} from '@material-ui/icons';
 import clsx from 'clsx';
 import Web3 from 'web3';
+import Decimal from 'decimal.js';
 
 import Dialog, {useStyles as dialogStyles} from '../containers/Dialog';
 
@@ -80,15 +81,13 @@ export default ({payments, nextDialog, state}) => {
   const classes = useStyles();
   const dialogClasses = dialogStyles();
 
-  const {hidePaymentNotice, screen, dialog, addresses, networks, currency, openDialog, closeDialog, addNotification, convertToCrypto, convertToPayableCrypto, convertPayableToDisplayValue, convertToFiat, getTransactions, updateHidePaymentNotice} = useContext(AppContext);
+  const {screen, dialog, addresses, networks, currency, openDialog, closeDialog, addNotification, convertToCrypto, convertToPayableCrypto, convertPayableToDisplayValue, convertToFiat, getTransactions, updateHidePaymentNotice} = useContext(AppContext);
 
   const [processing, setProcessing] = useState(state && state.processing || false);
   const [sent, setSent] = useState(state && state.sent || false);
   const [paid, setPaid] = useState(state && state.paid || false);
   const [error, setError] = useState(state && state.error || null);
   const [balance, setBalance] = useState(state && state.balance || 0);
-  const [showNotice, setShowNotice] = useState(false);
-  const [disableNotice, setDisableNotice] = useState(false);
 
   const address = addresses && addresses[0] || '',
     networkId = networks && networks[0] || null,
@@ -106,7 +105,7 @@ export default ({payments, nextDialog, state}) => {
       }).catch(() => {
       });
     }
-  }, [address]);
+  }, [address, networkId]);
 
   useEffect(() => {
     if ((paid || error) && processing) {
@@ -272,49 +271,37 @@ export default ({payments, nextDialog, state}) => {
     }
   };
 
-  const onPayOrShowConfirm = () => {
-    if(hidePaymentNotice) {
-      onPay();
-    } else {
-      setShowNotice(true);
-    }
-  };
-
-  const onContinue = () => {
-    setShowNotice(false);
-    if(!hidePaymentNotice && disableNotice) {
-      updateHidePaymentNotice();
-    }
-    onPay();
-  };
-
   return (
     <Dialog title="Payout Details"
             ariaLabel="payout details"
-            className={dialogClasses.dialogTall}
             actions={(
-              <>
-                <Button type="button"
-                        color="secondary"
-                        variant="contained"
-                        disabled={!address || paid || processing || cryptoTotal > cryptoBalance}
-                        onClick={onPayOrShowConfirm}>
-                  Pay
-                </Button>
-                <Button type="button"
-                        color="secondary"
-                        variant="outlined"
-                        disabled={processing && !sent}
-                        onClick={() => {
-                          if (nextDialog) {
-                            openDialog(nextDialog);
-                          } else {
-                            closeDialog();
-                          }
-                        }}>
-                  {(paid || sent) && 'Close' || 'Cancel'}
-                </Button>
-              </>
+              <div className={dialogClasses.dialogActionsGrid}>
+                <Grid container
+                      direction="row"
+                      justify="space-between"
+                      wrap="nowrap">
+                  <Button type="button"
+                          color="primary"
+                          variant="outlined"
+                          disabled={processing && !sent}
+                          onClick={() => {
+                            if (nextDialog) {
+                              openDialog(nextDialog);
+                            } else {
+                              closeDialog();
+                            }
+                          }}>
+                    {(paid || sent) && 'Close' || 'Cancel'}
+                  </Button>
+                  <Button type="button"
+                          color="primary"
+                          variant="contained"
+                          disabled={!address || paid || processing || new Decimal(cryptoTotal).gt(cryptoBalance)}
+                          onClick={onPay}>
+                    Pay
+                  </Button>
+                </Grid>
+              </div>
             )}>
 
       {(processing || paid || error) && (
@@ -390,32 +377,6 @@ export default ({payments, nextDialog, state}) => {
           ) || null}
         </div>
       </Grid>
-
-      {showNotice && (
-        <Dialog actions={(
-          <Button type="button"
-                  color="secondary"
-                  variant="contained"
-                  onClick={onContinue}>
-            Continue
-          </Button>
-        )}>
-          <div>For security reasons Metamask will close the Grindery Extension window.</div>
-          <div>Simply confirm the transaction in Metamask then reopen Grindery.</div>
-
-          {!hidePaymentNotice && (
-            <FormControlLabel label="Don't show this again."
-                              classes={{
-                                label: classes.checkboxLabel
-                              }}
-                              control={(
-                                <Checkbox color="secondary"
-                                          checked={disableNotice}
-                                          onChange={() => setDisableNotice(!disableNotice)}/>
-                              )}/>
-          ) || null}
-        </Dialog>
-      ) || null}
     </Dialog>
   );
 };

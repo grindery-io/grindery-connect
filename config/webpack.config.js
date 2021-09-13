@@ -196,6 +196,7 @@ module.exports = function (webpackEnv) {
         : {
           main: paths.appIndexJs,
           background: paths.appBackgroundJs,
+          content: paths.contentJs,
         },
     output: {
       // The build folder.
@@ -205,10 +206,14 @@ module.exports = function (webpackEnv) {
       // There will be one main bundle, and one file per asynchronous chunk.
       // In development, it does not produce real files.
       filename: (pathData, assetInfo) => {
-        const isBackgroundScript = /(.-)*background$/i.test(pathData && pathData.chunk && pathData.chunk.name);
+        const isBackgroundScript = /(.-)*background$/i.test(pathData && pathData.chunk && pathData.chunk.name),
+          isContentScript = /(.-)*content$/i.test(pathData && pathData.chunk && pathData.chunk.name);
         if(isBackgroundScript) {
           return 'background.js';
+        } else if(isContentScript) {
+          return 'content.js';
         }
+        //return 'static/js/main.js';
         return 'static/js/' + (isEnvProduction
           ? '[name].[contenthash:8].js'
           : isEnvDevelopment && 'bundle.js');
@@ -575,7 +580,7 @@ module.exports = function (webpackEnv) {
           {
             inject: true,
             template: paths.appHtml,
-            excludeChunks: ['background'],
+            excludeChunks: ['background', 'content'/*, 'main'*/],
           },
           isEnvProduction
             ? {

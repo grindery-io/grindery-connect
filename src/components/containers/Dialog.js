@@ -5,13 +5,19 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
 } from '@material-ui/core';
 import clsx from 'clsx';
 
+import {DIMENSIONS} from '../../helpers/style';
+
+import closeIcon from '../../images/close-black.svg'
+
 export const useStyles = makeStyles((theme) => ({
   dialog: {
-    width: 'calc(375px - 40px)',
-    inset: `${theme.spacing(15)}px auto auto ${theme.spacing(2.5)}px !important`,
+    width: `calc(100% - ${DIMENSIONS.dialogHorizontalMargin*2}px)`,
+    maxWidth: `calc(${DIMENSIONS.width}px - ${DIMENSIONS.dialogHorizontalMargin*2}px)`,
+    inset: `${theme.spacing(15)}px auto auto ${DIMENSIONS.dialogHorizontalMargin}px  !important`,
   },
   dialogTall: {
     top: `${theme.spacing(11.25)}px !important`,
@@ -20,11 +26,25 @@ export const useStyles = makeStyles((theme) => ({
     top: `${theme.spacing(5)}px !important`,
   },
   dialogTitle: {
+    position: 'relative',
     fontSize: 22,
     fontWeight: 'normal',
     lineHeight: 1.6,
     textAlign: 'center',
     padding: theme.spacing(2.5, 2.5, 1.25),
+  },
+  dialogClose: {
+    position: 'absolute',
+    top: theme.spacing(1.5),
+    right: theme.spacing(1.5),
+    //fontSize: 14,
+    //width: 14,
+    //height: 14,
+    '& svg, & img': {
+      fontSize: 14,
+      width: 14,
+      height: 14,
+    }
   },
   dialogContainer: {
     color: '#363636',
@@ -34,13 +54,23 @@ export const useStyles = makeStyles((theme) => ({
     padding: theme.spacing(1.25, 2.5, 1.25),
   },
   dialogActions: {
-    margin: theme.spacing(1.25, 0, 2.5),
+    margin: theme.spacing(1.25, 0, 1.25),
     '& button': {
       display: 'block',
       width: '100%',
     },
     '& button + button': {
       marginTop: theme.spacing(1.25),
+    }
+  },
+  dialogActionsGrid: {
+    width: '100%',
+    '& button + button': {
+      marginTop: 0,
+      marginLeft: theme.spacing(1.25),
+    },
+    '& > *': {
+
     }
   },
   dialogActionsOverride: {
@@ -69,6 +99,14 @@ export default ({children, title, content, actions, className, onClose, ariaLabe
             aria-labelledby={ariaLabel || (typeof title === 'string' && title) || ''}>
       <DialogTitle className={classes.dialogTitle}>
         {title || ''}
+
+        {onClose && (
+          <IconButton className={classes.dialogClose}
+                      aria-label="close"
+                      onClick={onClose}>
+            <img src={closeIcon}/>
+          </IconButton>
+        ) || null}
       </DialogTitle>
 
       <DialogContent className={classes.dialogContent}>

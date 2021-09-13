@@ -9,6 +9,12 @@ export const COLORS = {
   secondaryLighter: '#F1E4FF',
   contentBg: '#F4F5F7',
   white: '#FFF',
+  green: '#00B674',
+};
+
+export const DIMENSIONS = {
+  width: 415,
+  dialogHorizontalMargin: 40,
 };
 
 export const theme = createMuiTheme({
@@ -37,7 +43,7 @@ export const theme = createMuiTheme({
     },
     MuiButton: {
       root: {
-        borderRadius: 30,
+        borderRadius: 5,
       }
     },
   },
@@ -67,6 +73,8 @@ export const cardStyles = makeStyles((theme) => ({
     lineHeight: 1.6,
     marginBottom: theme.spacing(1),
     borderRadius: 5,
+    //boxShadow: 'none',
+    boxShadow: 'inset 0 1px 0px rgba(0, 0, 0, 0.1), inset -1px 0 0 rgba(0, 0, 0, 0.1), inset 0 -1px 0px rgba(0, 0, 0, 0.1), inset 1px 0 0 rgba(0, 0, 0, 0.1)',
     cursor: 'pointer',
     '&:last-child': {
       marginBottom: theme.spacing(0.5),
@@ -90,6 +98,19 @@ export const cardStyles = makeStyles((theme) => ({
     width: 36,
     height: 36,
     marginRight: theme.spacing(1.25),
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatarExtraIcon: {
+    position: 'absolute',
+    right: 8,
+    bottom: 0,
+    width: 14,
+    height: 14,
+    backgroundColor: COLORS.white,
+    border: `2px solid ${COLORS.white}`,
+    borderRadius: 16,
   },
   actions: {
     display: 'flex',
@@ -156,6 +177,9 @@ export const cardStyles = makeStyles((theme) => ({
     fontSize: 9,
     color: theme.palette.info.main,
     border: `1px solid ${theme.palette.info.main}`,
+  },
+  statusPaid: {
+    color: COLORS.green,
+    borderWidth: 0,
   }
 }));
-

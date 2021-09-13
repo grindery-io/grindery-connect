@@ -7,16 +7,18 @@ import bcrypt from 'bcryptjs';
 import Decimal from 'decimal.js';
 import clsx from 'clsx';
 import moment from 'moment';
+import Web3 from 'web3';
 
-import TitleBar from './TitleBar';
 import TabBar from './TabBar';
+import AppTitleBar from './AppTitleBar';
+import ScreenTitleBar from './ScreenTitleBar';
 import ContentRouter from './ContentRouter';
 import DialogRouter from './DialogRouter';
 import ErrorBoundary from './ErrorBoundary';
 
 import AppContext, {defaultAppState} from '../../AppContext';
 
-import {DIALOG_ACTIONS, SCREENS, TASKS} from '../../helpers/contants';
+import {DIALOG_ACTIONS, SCREENS, TASKS, WALLET_EVENTS} from '../../helpers/contants';
 import {
   STORAGE_KEYS,
   readFromStorage,
@@ -28,7 +30,7 @@ import {
   setHidePrePaymentNotice,
   getHidePrePaymentNotice,
   getHash,
-  saveHash
+  saveHash, saveAddresses, saveNetwork
 } from '../../helpers/storage';
 import {
   contactComparator,
@@ -39,9 +41,9 @@ import {
   getChains,
   getPriceData,
 } from '../../helpers/utils';
-import {makeBackgroundRequest} from '../../helpers/routines';
+import {listenForExtensionEvent, makeBackgroundRequest} from '../../helpers/routines';
 import {ERROR_MESSAGES, GrinderyError} from '../../helpers/errors';
-import {COLORS} from '../../helpers/style';
+import {COLORS, DIMENSIONS} from '../../helpers/style';
 
 import cachedChains from '../../helpers/chains.json';
 
@@ -51,8 +53,12 @@ const useStyles = makeStyles((theme) => ({
     flexDirection: 'column',
     justifyContent: 'space-between',
     alignItems: 'center',
-    width: 375,
-    height: 600,
+    width: '100%',
+    maxWidth: DIMENSIONS.width,
+    height: '100vh',
+    minHeight: 600,
+    boxShadow: 'inset 1px 0 0 rgba(0, 0, 0, 0.1)',
+    backgroundColor: COLORS.white,
     '& > *': {
       width: '100%',
     },
@@ -64,6 +70,24 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing(2),
+  },
+  layout: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    flexGrow: 1,
+  },
+  mainContentContainer: {
+    flexGrow: 1,
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    '& > *': {
+      width: '100%',
+    }
   },
   mainContent: {
     flexGrow: 1,
@@ -82,7 +106,7 @@ const useStyles = makeStyles((theme) => ({
   },
   mainContentNoPadding: {
     padding: 0,
-  }
+  },
 }));
 
 export default () => {
@@ -187,7 +211,11 @@ export default () => {
     if(accessToken) {
       writeToStorage(STORAGE_KEYS.LAST_ACTIVITY_AT, moment.utc().format()).catch(() => {});
 
-      getWalletInfo().catch(() => {});
+      getWalletInfo().then(() => {
+        listenToWalletEvents();
+      }).catch(() => {
+        listenToWalletEvents();
+      });
 
       getContacts().catch(() => {});
       getPayments().catch(() => {});
@@ -379,6 +407,64 @@ export default () => {
     });
   };
 
+  const listenToWalletEvents = () => {
+    makeBackgroundRequest(TASKS.LISTEN_FOR_WALLET_EVENTS, {
+      events: [
+        WALLET_EVENTS.CONNECT,
+        WALLET_EVENTS.ACCOUNTS_CHANGED,
+        WALLET_EVENTS.CHAIN_CHANGED,
+        WALLET_EVENTS.MESSAGE,
+        WALLET_EVENTS.DISCONNECT,
+      ],
+    }).catch(e => {});
+
+    listenForExtensionEvent([
+      WALLET_EVENTS.CONNECT,
+      WALLET_EVENTS.ACCOUNTS_CHANGED,
+      WALLET_EVENTS.CHAIN_CHANGED,
+      WALLET_EVENTS.MESSAGE,
+      WALLET_EVENTS.DISCONNECT,
+    ], (event, payload) => {
+      switch (event) {
+        case WALLET_EVENTS.ACCOUNTS_CHANGED: {
+          const accounts = payload && payload.data;
+          if(accounts && Array.isArray(accounts) && accounts.length) {
+            const allAddresses = _.uniq([...(accounts || []), ...(addresses || [])]);
+            setAddresses(allAddresses);
+            saveAddresses(accounts).then(res => {
+              if(res && Array.isArray(res) && res.length) {
+                setAddresses(res);
+              }
+            }).catch(() => {});
+          }
+          break;
+        }
+        case WALLET_EVENTS.CHAIN_CHANGED: {
+          const chainId = payload && payload.data;
+          const networkId = chainId && Web3.utils.hexToNumber(chainId) || null;
+          if(networkId) {
+            const allNetworks = _.uniq([networkId, ...(networks || [])]);
+            setNetworks(allNetworks);
+            saveNetwork(networkId).then(res => {
+              if(res && Array.isArray(res) && res.length) {
+                setNetworks(res);
+              }
+            }).catch(() => {});
+          }
+          break;
+        }
+        case WALLET_EVENTS.CONNECT:
+        case WALLET_EVENTS.DISCONNECT: {
+          getWalletInfo();
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    });
+  };
+
   const getNetworkById = id => {
     return (chains || []).find(i => id && i && i.chainId === id) || null;
   };
@@ -557,7 +643,10 @@ export default () => {
 
       // Actions
       authenticate,
-      logOut: () => setAccessToken(null),
+      logOut: () => {
+        setAccessToken(null);
+        writeToStorage(STORAGE_KEYS.LAST_ACTIVITY_AT, '').catch(() => {});
+      },
       changeScreen: (screen, action = null, data = null) => {
         setScreen(screen);
         if (action) {
@@ -609,40 +698,53 @@ export default () => {
     }}>
       <div className={classes.container}>
         <ErrorBoundary>
-          <TitleBar/>
+          <AppTitleBar/>
         </ErrorBoundary>
-        {accessToken && notifications.length && (
-          <ErrorBoundary>
-            {notifications.filter(i => i.title).map((notification, idx) => (
-              <Alert severity={notification.type || 'success'}
-                     onClose={() => {
-                       if(notifications.length) {
-                         setNotifications([...notifications.slice(0, idx), ...notifications.slice(idx+1)]);
-                       }
-                     }}>
-                {notification.title}
-              </Alert>
-            ))}
-          </ErrorBoundary>
-        ) || null}
-
-        <div className={clsx(classes.mainContent, {
-          [classes.mainContentGreyBg]: [SCREENS.HOME, SCREENS.CONTACTS, SCREENS.PAYMENTS, SCREENS.TRANSACTIONS].includes(screen),
-          [classes.mainContentNoPadding]: [SCREENS.CONTACTS, SCREENS.PAYMENTS].includes(screen),
-        })}>
-          <ErrorBoundary>
-            {sessionInitialized && (
-              <ContentRouter/>
-            ) || (
-              <div className={classes.loading}>
-                <CircularProgress size={30}/>
-              </div>
-            )}
-          </ErrorBoundary>
-        </div>
 
         <ErrorBoundary>
-          <TabBar/>
+          <div className={classes.layout}>
+            <div className={classes.mainContentContainer}>
+              {/*
+              <ErrorBoundary>
+                <ScreenTitleBar/>
+              </ErrorBoundary>
+              */}
+
+              {accessToken && notifications.length && (
+                <ErrorBoundary>
+                  {notifications.filter(i => i.title).map((notification, idx) => (
+                    <Alert severity={notification.type || 'success'}
+                           onClose={() => {
+                             if(notifications.length) {
+                               setNotifications([...notifications.slice(0, idx), ...notifications.slice(idx+1)]);
+                             }
+                           }}>
+                      {notification.title}
+                    </Alert>
+                  ))}
+                </ErrorBoundary>
+              ) || null}
+
+              <div className={clsx(classes.mainContent, {
+                //[classes.mainContentGreyBg]: [SCREENS.HOME, SCREENS.CONTACTS, SCREENS.PAYMENTS, SCREENS.TRANSACTIONS].includes(screen),
+                [classes.mainContentNoPadding]: [SCREENS.CONTRACTS, SCREENS.PAYMENTS, SCREENS.TRANSACTIONS].includes(screen),
+              })}>
+                <ErrorBoundary>
+                  {sessionInitialized && (
+                    <ContentRouter/>
+                  ) || (
+                    <div className={classes.loading}>
+                      <CircularProgress size={30}/>
+                    </div>
+                  )}
+                </ErrorBoundary>
+              </div>
+            </div>
+
+            <ErrorBoundary>
+              <TabBar/>
+            </ErrorBoundary>
+          </div>
         </ErrorBoundary>
 
         <ErrorBoundary>

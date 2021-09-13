@@ -3,6 +3,7 @@ import React, {useContext} from 'react';
 import Auth from '../screens/Auth';
 import Home from '../screens/Home';
 import Contacts from '../screens/Contacts';
+import Contracts from '../screens/Contracts';
 import Payments from '../screens/Payments';
 import Transactions from '../screens/Transactions';
 import Settings from '../screens/Settings';
@@ -23,6 +24,11 @@ export default () => {
     case SCREENS.CONTACTS: {
       return (
         <Contacts />
+      );
+    }
+    case SCREENS.CONTRACTS: {
+      return (
+        <Contracts/>
       );
     }
     case SCREENS.PAYMENTS: {

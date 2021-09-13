@@ -16,12 +16,6 @@ export const getWeb3Instance = () => {
   try {
     const provider = createProvider();
     if (provider) {
-      provider.on('error', error => {
-        //console.error('metamask error => ', error);
-      });
-      provider.on('close', error => {
-        //console.error('metamask close => ', error);
-      });
       return createWeb3(provider);
     }
   } catch (e) {
@@ -67,6 +61,38 @@ export const sendExtensionNotification = (event, payload=null) => {
   });
 };
 
+export const sendExtensionEvent = (event, payload=null) => {
+  return sendExtensionMessage({
+    type: MESSAGE_TYPES.EVENT,
+    event,
+    payload,
+  });
+};
+
+export const sendContentRequest = (action, payload=null) => {
+  const data = {
+    type: MESSAGE_TYPES.ACTION,
+    action,
+    payload,
+  };
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+      const tabId = tabs && tabs[0] && tabs[0].id || null;
+      if(tabId) {
+        chrome.tabs.sendMessage(tabId, data, (res) => {
+          if(res && res.data) {
+            resolve(res && res.data || null);
+          } else {
+            reject(res && res.error || null);
+          }
+        });
+      } else {
+        reject(new Error('Failed to get current tab'));
+      }
+    });
+  });
+};
+
 export const listenForExtensionNotification = (events, callback) => {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if(chrome.runtime.lastError) {
@@ -76,8 +102,22 @@ export const listenForExtensionNotification = (events, callback) => {
 
     if(message && message.type === MESSAGE_TYPES.NOTIFICATION && (Array.isArray(events) && events.includes(message.event) || message.event === events)) {
       callback(message.event, message.payload);
+      sendResponse({message: 'received'});
     }
-    sendResponse({message: 'received'});
+  });
+};
+
+export const listenForExtensionEvent = (events, callback) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if(chrome.runtime.lastError) {
+      //console.error('listenForExtensionEvent chrome.runtime.lastError => ', chrome.runtime.lastError.message || chrome.runtime.lastError);
+      return;
+    }
+
+    if(message && message.type === MESSAGE_TYPES.EVENT && (Array.isArray(events) && events.includes(message.event) || message.event === events)) {
+      callback(message.event, message.payload);
+      sendResponse({message: 'received'});
+    }
   });
 };
 

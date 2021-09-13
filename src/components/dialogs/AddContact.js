@@ -2,12 +2,13 @@ import React, {useContext, useState} from 'react';
 import {makeStyles} from '@material-ui/core/styles';
 import {
   Button,
-  FormGroup,
+  FormGroup, Grid,
   TextField
 } from '@material-ui/core';
 import {Alert} from '@material-ui/lab';
 import Web3 from 'web3';
 import moment from 'moment';
+import clsx from 'clsx';
 
 import Dialog, {useStyles as dialogStyles} from '../containers/Dialog';
 
@@ -128,25 +129,30 @@ export default ({nextDialog}) => {
                      onChange={e => updateData('address', e.target.value)}/>
         </FormGroup>
 
-        <div className={dialogClasses.dialogActions}>
-          <Button type="submit"
-                  color="secondary"
-                  variant="contained"
-                  disabled={saving}>
-            Save
-          </Button>
-          <Button type="button"
-                  color="secondary"
-                  variant="outlined"
-                  onClick={() => {
-                    if(nextDialog) {
-                      openDialog(nextDialog);
-                    } else {
-                      closeDialog();
-                    }
-                  }}>
-            Cancel
-          </Button>
+        <div className={clsx(dialogClasses.dialogActions, dialogClasses.dialogActionsGrid)}>
+          <Grid container
+                direction="row"
+                justify="space-between"
+                wrap="nowrap">
+            <Button type="button"
+                    color="primary"
+                    variant="outlined"
+                    onClick={() => {
+                      if(nextDialog) {
+                        openDialog(nextDialog);
+                      } else {
+                        closeDialog();
+                      }
+                    }}>
+              Cancel
+            </Button>
+            <Button type="submit"
+                    color="primary"
+                    variant="contained"
+                    disabled={saving}>
+              Save
+            </Button>
+          </Grid>
         </div>
       </form>
     </Dialog>

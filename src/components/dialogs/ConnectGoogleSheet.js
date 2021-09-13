@@ -8,7 +8,7 @@ import {
   FormGroup,
   FormLabel,
   MenuItem,
-  TextField,
+  TextField, Grid,
 } from '@material-ui/core';
 import {Alert} from '@material-ui/lab';
 import {Search as SearchIcon} from '@material-ui/icons';
@@ -19,10 +19,11 @@ import Dialog, {useStyles as dialogStyles} from '../containers/Dialog';
 
 import AppContext from '../../AppContext';
 
-import {INTEGRATIONS, SPREADSHEET_COLUMNS, SPREADSHEET_COLUMNS_DISPLAY} from '../../helpers/contants';
+import {ACTIONS, INTEGRATIONS, SPREADSHEET_COLUMNS, SPREADSHEET_COLUMNS_DISPLAY} from '../../helpers/contants';
 import {connectToGoogle, getSpreadsheets, getSpreadsheet, getSpreadsheetData} from '../../helpers/google';
-import {syncContactsWithGoogleSheets} from '../../helpers/routines';
+import {sendContentRequest, syncContactsWithGoogleSheets} from '../../helpers/routines';
 import {ERROR_MESSAGES} from '../../helpers/errors';
+import {searchItems} from "../../helpers/utils";
 
 const useStyles = makeStyles((theme) => ({
   alert: {
@@ -56,7 +57,7 @@ export default ({initialData, nextDialog}) => {
 
   const [spreadsheets, setSpreadsheets] = useState([]);
   const [spreadsheet, setSpreadsheet] = useState([]);
-  const [spreadsheetSearch, setSpreadsheetSearch] = useState('');
+  const [search, setSearch] = useState('');
   const [showOptions, setShowOptions] = useState(false);
   const [spreadsheetData, setSpreadsheetData] = useState([]);
   const [sheets, setSheets] = useState([]);
@@ -78,8 +79,14 @@ export default ({initialData, nextDialog}) => {
           setLoading(false);
           if (res && Array.isArray(res)) {
             setSpreadsheets(res);
+
+            sendContentRequest(ACTIONS.GET_ACTIVE_GOOGLE_SHEET_DATA).then(contentRes => {
+              if(contentRes.id) {
+                updateData('spreadsheet', contentRes.id);
+              }
+            }).catch(() => {});
           }
-        }).catch(e => {
+        }).catch(() => {
           setLoading(false);
           setFormError(ERROR_MESSAGES.GOOGLE_SHEETS_CONNECT_FAILED);
         });
@@ -87,7 +94,7 @@ export default ({initialData, nextDialog}) => {
         setLoading(false);
         setFormError(ERROR_MESSAGES.GOOGLE_SHEETS_CONNECT_FAILED);
       }
-    }).catch(e => {
+    }).catch(() => {
       setLoading(false);
       setFormError(ERROR_MESSAGES.GOOGLE_SHEETS_CONNECT_FAILED);
     });
@@ -120,12 +127,21 @@ export default ({initialData, nextDialog}) => {
           if (res.sheets && Array.isArray(res.sheets)) {
             setSheets(res.sheets);
             const sheet = res.sheets[0];
-            if (sheet && (sheet.id || typeof sheet.id === 'number')) {
-              setData({...(data || {}), sheet: sheet.id});
-            }
+            let sheetId = sheet && sheet.id;
+            sendContentRequest(ACTIONS.GET_ACTIVE_GOOGLE_SHEET_DATA).then(contentRes => {
+              if(contentRes.id === data.spreadsheet && contentRes.sheet && contentRes.sheet.title) {
+                const selectedSheet = (res.sheets || []).find(i => i.title === contentRes.sheet.title);
+                if(selectedSheet && selectedSheet.id) {
+                  sheetId = selectedSheet.id;
+                }
+              }
+              updateData('sheet', sheetId);
+            }).catch(() => {
+              updateData('sheet', sheetId);
+            });
           }
         }
-      }).catch(e => {
+      }).catch(() => {
         setLoading(false);
       });
     }
@@ -167,7 +183,7 @@ export default ({initialData, nextDialog}) => {
   }, [data.sheet]);
 
   const updateData = (key, value) => {
-    setData({...(data || {}), [key]: value || typeof value === 'number' ? value : ''});
+    setData(data => ({...(data || {}), [key]: value || typeof value === 'number' ? value : ''}));
     if (errors && errors[key]) {
       let newErrors = {...(errors || {})};
       delete newErrors[key];
@@ -184,36 +200,18 @@ export default ({initialData, nextDialog}) => {
     }
   };
 
-  const filterSpreadsheetOptions = () => {
-    let options = (spreadsheets || []).map(item => {
+  const parseSpreadsheetOptions = () => {
+    return (spreadsheets || []).map(item => {
       if(item) {
         const value = item.id,
           label = item.name || item.id || '';
-        let rank = 1;
-
-        if(spreadsheetSearch) {
-          let searchSegments = _.uniq([spreadsheetSearch, ...(spreadsheetSearch || '').split(/\s+/)]);
-          const regex = new RegExp(`${searchSegments.map(i => i && `(${i})` || null).filter(i => i).join('|')}`, 'i');
-          if(!regex.test(value) && !regex.test(label)) {
-            return null;
-          }
-          if((spreadsheetSearch || '').charAt(0).toLowerCase() === (label || '').charAt(0).toLowerCase()) {
-            rank = 2;
-          }
-        }
-
         return {
           value,
           label,
-          rank,
         };
       }
       return null;
     }).filter(i => i);
-    if(spreadsheetSearch) {
-      options = _.orderBy(options, ['rank', 'label'], ['desc', 'asc']);
-    }
-    return options;
   };
 
   const saveIntegration = e => {
@@ -251,14 +249,14 @@ export default ({initialData, nextDialog}) => {
   };
 
   const hasSetSpreadsheet = data && data.spreadsheet,
-    hasSetSheet = data && (data.sheet || typeof data.sheet === 'number');
+    hasSetSheet = data && (data.sheet || typeof data.sheet === 'number'),
+    spreadsheetOptionsResults = searchItems(
+      search, parseSpreadsheetOptions(spreadsheets), ['value', 'label'], ['label']
+    );
 
   return (
     <Dialog title="Connect Google Sheet"
-            ariaLabel="connect google sheet"
-            className={clsx({
-              [dialogClasses.dialogTaller]: (hasSetSpreadsheet && hasSetSheet && !loading) || showOptions,
-            })}>
+            ariaLabel="connect google sheet">
       <form onSubmit={saveIntegration}>
         {formError && (
           <Alert severity="error" className={classes.alert}>{formError || ''}</Alert>
@@ -291,7 +289,7 @@ export default ({initialData, nextDialog}) => {
                            const elem = e.target;
                            if(!elem || elem.getAttribute('type') !== 'search') {
                              setShowOptions(false);
-                             setSpreadsheetSearch('');
+                             setSearch('');
                            }
                          },
                          MenuProps: {
@@ -311,11 +309,11 @@ export default ({initialData, nextDialog}) => {
                          e.stopPropagation();
                        }}
                        onChange={e => {
-                         setSpreadsheetSearch(e.target.value || '');
+                         setSearch(e.target.value || '');
                        }}
                        className={classes.searchInput}/>
               </MenuItem>
-              {filterSpreadsheetOptions(spreadsheets || []).map(item => {
+              {(spreadsheetOptionsResults || []).map(item => {
                 if (item) {
                   const value = item.value,
                     label = item.label || item.value || '';
@@ -420,25 +418,30 @@ export default ({initialData, nextDialog}) => {
           </>
         ) || null}
 
-        <div className={dialogClasses.dialogActions}>
-          <Button type="submit"
-                  color="secondary"
-                  variant="contained"
-                  disabled={saving || !hasSetSpreadsheet || !hasSetSheet || !columnMap || !columnMap[SPREADSHEET_COLUMNS.NAME] || !columnMap[SPREADSHEET_COLUMNS.EMAIL] || !columnMap[SPREADSHEET_COLUMNS.ADDRESS]}>
-            Save
-          </Button>
-          <Button type="button"
-                  color="secondary"
-                  variant="outlined"
-                  onClick={() => {
-                    if (nextDialog) {
-                      openDialog(nextDialog);
-                    } else {
-                      closeDialog();
-                    }
-                  }}>
-            Cancel
-          </Button>
+        <div className={clsx(dialogClasses.dialogActions, dialogClasses.dialogActionsGrid)}>
+          <Grid container
+                direction="row"
+                justify="space-between"
+                wrap="nowrap">
+            <Button type="button"
+                    color="primary"
+                    variant="outlined"
+                    onClick={() => {
+                      if (nextDialog) {
+                        openDialog(nextDialog);
+                      } else {
+                        closeDialog();
+                      }
+                    }}>
+              Cancel
+            </Button>
+            <Button type="submit"
+                    color="primary"
+                    variant="contained"
+                    disabled={saving || !hasSetSpreadsheet || !hasSetSheet || !columnMap || !columnMap[SPREADSHEET_COLUMNS.NAME] || !columnMap[SPREADSHEET_COLUMNS.EMAIL] || !columnMap[SPREADSHEET_COLUMNS.ADDRESS]}>
+              Save
+            </Button>
+          </Grid>
         </div>
       </form>
     </Dialog>

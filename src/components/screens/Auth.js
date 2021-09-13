@@ -9,8 +9,6 @@ import AppContext from '../../AppContext';
 import {SCREENS} from '../../helpers/contants';
 import {ERROR_MESSAGES} from '../../helpers/errors';
 
-import logo from '../../images/grindery-logo.png';
-
 const useStyles = makeStyles((theme) => ({
   container: {
     flexGrow: 1,
@@ -20,18 +18,27 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logWrapper: {
+  logoWrapper: {
     textAlign: 'center',
   },
   logo: {
     height: 60,
     marginBottom: theme.spacing(5),
   },
-  passcodeLabel: {
+  title: {
     fontSize: 24,
     fontWeight: 'bold',
     lineHeight: 1.1,
     textAlign: 'center',
+    marginBottom: theme.spacing(1.25),
+  },
+  passcodeLabel: {
+    fontSize: 16,
+    fontWeight: 400,
+    lineHeight: 1.5,
+    textAlign: 'center',
+    color: '#6D6F78',
+    marginBottom: theme.spacing(5),
   },
   passcodeFields: {
     display: 'flex',
@@ -107,9 +114,9 @@ export default () => {
 
   return (
     <div className={classes.container}>
-      <div className={classes.logWrapper}>
-        <img src={logo} className={classes.logo} height={60}/>
-      </div>
+      <Typography variant="h2" component="h2" className={classes.title}>
+        Welcome to Grindery
+      </Typography>
 
       <Typography variant="h2" component="h2" className={classes.passcodeLabel}>
         {isNewUser?(newPasscode?'Confirm':'Setup'):'Enter'} your pass code

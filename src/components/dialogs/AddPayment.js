@@ -1,4 +1,4 @@
-import React, {useContext, useEffect, useState} from 'react';
+import React, {useContext, useEffect, useRef, useState} from 'react';
 import {makeStyles} from '@material-ui/core/styles';
 import {
   Button,
@@ -27,7 +27,8 @@ import AppContext from '../../AppContext';
 
 import {DIALOG_ACTIONS} from '../../helpers/contants';
 import {ERROR_MESSAGES} from '../../helpers/errors';
-import {truncateAddress} from "../../helpers/utils";
+import {truncateAddress} from '../../helpers/utils';
+import {theme} from '../../helpers/style';
 
 const useStyles = makeStyles((theme) => ({
   alert: {
@@ -65,34 +66,36 @@ export default ({initialData, contact, nextDialog}) => {
   const [errors, setErrors] = useState(null);
   const [formError, setFormError] = useState(null);
 
+  const submitRef = useRef('');
+
   const getContactID = contact => `${contact.address || ''}|${contact.email || ''}`;
 
   useEffect(() => {
-    if(!data || !data.due_date) {
+    if (!data || !data.due_date) {
       setData({...(data || {}), due_date: moment.utc().format()})
     }
   }, []);
 
   useEffect(() => {
-    if(initialData || contact) {
+    if (initialData || contact) {
       let newData;
-      if(initialData) {
+      if (initialData) {
         newData = {...(initialData || {})};
       } else {
         newData = {...(initialData || {})};
       }
-      if(contact && (contact.address || contact.email)) {
+      if (contact && (contact.address || contact.email)) {
         newData.contact = getContactID(contact);
       }
-      if(newData) {
+      if (newData) {
         setData(newData);
       }
     }
   }, [initialData, contact]);
 
   useEffect(() => {
-    if(data) {
-      if(data.inputCurrency && data.inputCurrency !== 'USD') {
+    if (data) {
+      if (data.inputCurrency && data.inputCurrency !== 'USD') {
         onCryptoChange(data.value);
       } else {
         onFiatChange(data.amount);
@@ -107,7 +110,7 @@ export default ({initialData, contact, nextDialog}) => {
       value: amount && convertToCrypto(amount) || '',
       inputCurrency: 'USD',
     });
-    if(errors && errors.amount) {
+    if (errors && errors.amount) {
       let newErrors = {...(errors || {})};
       delete newErrors.amount;
       setErrors(newErrors);
@@ -121,7 +124,7 @@ export default ({initialData, contact, nextDialog}) => {
       amount: value && convertToFiat(value) || '',
       inputCurrency: currency,
     });
-    if(errors && errors.amount) {
+    if (errors && errors.amount) {
       let newErrors = {...(errors || {})};
       delete newErrors.amount;
       setErrors(newErrors);
@@ -134,7 +137,7 @@ export default ({initialData, contact, nextDialog}) => {
 
   const updateData = (key, value) => {
     setData({...(data || {}), [key]: value || ''});
-    if(errors && errors[key]) {
+    if (errors && errors[key]) {
       let newErrors = {...(errors || {})};
       delete newErrors[key];
       setErrors(newErrors);
@@ -149,38 +152,38 @@ export default ({initialData, contact, nextDialog}) => {
     setSaving(true);
     setErrors(null);
 
-    for (const key of ['contact', 'amount', 'due_date']) {
+    for (const key of ['contact', 'amount', 'due_date', 'details']) {
       const value = data && data[key];
-      if(value) {
-        if(key === 'contact') {
+      if (value) {
+        if (key === 'contact') {
           const [address, email] = (value || '').split('|').map(i => (i || '').trim());
-          if(address && Web3.utils.isAddress(address)) {
+          if (address && Web3.utils.isAddress(address)) {
             payload.address = address;
           } else {
             errors.contact = ERROR_MESSAGES.INVALID_WALLET_ADDRESS;
           }
 
-          if(email) {
+          if (email) {
             payload.email = email;
           }
         } else {
           payload[key] = value;
         }
-      } else {
+      } else if (key !== 'details') {
         errors[key] = ERROR_MESSAGES.REQUIRED;
       }
     }
 
-    if(payload.amount) {
+    if (payload.amount) {
       const amount = new Decimal(payload.amount);
-      if(amount.gt(0)) {
+      if (amount.gt(0)) {
         payload.amount = amount.toNumber();
       } else {
         errors.amount = ERROR_MESSAGES.INVALID_AMOUNT;
       }
     }
 
-    if(Object.keys(errors).length) {
+    if (Object.keys(errors).length) {
       setSaving(false);
       setErrors(errors);
     } else {
@@ -189,7 +192,9 @@ export default ({initialData, contact, nextDialog}) => {
         ...payload,
         created_at: moment.utc().format(),
       }).then(res => {
-        if(nextDialog) {
+        if (submitRef.current === 'pay_now') {
+          openDialog(DIALOG_ACTIONS.MAKE_PAYOUT, {payments: [data], nextDialog});
+        } else if (nextDialog) {
           openDialog({...nextDialog, payment: data});
         } else {
           closeDialog();
@@ -200,9 +205,27 @@ export default ({initialData, contact, nextDialog}) => {
     }
   };
 
+  const onClose = () => {
+    if (nextDialog) {
+      openDialog(nextDialog);
+    } else {
+      closeDialog();
+    }
+  };
+
   return (
-    <Dialog title="Add Payment"
-            ariaLabel="add payment">
+    <Dialog title={(
+      <>
+        <div style={{textAlign: 'left', marginBottom: theme.spacing(1.25)}}>
+          Register a Liability
+        </div>
+        <div style={{textAlign: 'left', fontSize: 14, lineHeight: 1.5}}>
+          A liability is an open invoice, a net salary payment or anything else you want or need to pay.
+        </div>
+      </>
+    )}
+            ariaLabel="register a liability"
+            onClose={onClose}>
       <form onSubmit={savePayment}>
         {formError && (
           <Alert severity="error" className={classes.alert}>{formError || ''}</Alert>
@@ -220,14 +243,14 @@ export default ({initialData, contact, nextDialog}) => {
                      InputProps={{
                        endAdornment: (
                          <InputAdornment position="end">
-                           <IconButton
-                             aria-label="add contact"
-                             onClick={() => openDialog(DIALOG_ACTIONS.ADD_CONTACT, {
-                               nextDialog: {
-                                 action: DIALOG_ACTIONS.ADD_PAYMENT,
-                                 initialData: data
-                               }
-                             })}>
+                           <IconButton aria-label="add contact"
+                                       color="secondary"
+                                       onClick={() => openDialog(DIALOG_ACTIONS.ADD_CONTACT, {
+                                         nextDialog: {
+                                           action: DIALOG_ACTIONS.ADD_PAYMENT,
+                                           initialData: data
+                                         }
+                                       })}>
                              <AddIcon/>
                            </IconButton>
                          </InputAdornment>
@@ -240,7 +263,7 @@ export default ({initialData, contact, nextDialog}) => {
                      }}
                      onChange={e => updateData('contact', e.target.value)}>
             {(contacts || []).map(item => {
-              if(item) {
+              if (item) {
                 const value = getContactID(item),
                   label = item.name || item.email || item.address || '';
                 return (
@@ -283,7 +306,7 @@ export default ({initialData, contact, nextDialog}) => {
                          startAdornment: (
                            <InputAdornment position="start">$</InputAdornment>
                          ),
-                       }} />
+                       }}/>
             {currency && (
               <TextField label="Value"
                          type="text"
@@ -300,9 +323,21 @@ export default ({initialData, contact, nextDialog}) => {
                            endAdornment: (
                              <InputAdornment position="end">{currency}</InputAdornment>
                            ),
-                         }} />
+                         }}/>
             ) || null}
           </Grid>
+        </FormGroup>
+
+        <FormGroup className={classes.formGroup}>
+          <TextField label="Details"
+                     type="text"
+                     value={data && data.details || ''}
+                     placeholder="Details"
+                     required={false}
+                     error={errors && errors.details}
+                     helperText={errors && errors.details || ''}
+                     onChange={e => updateData('details', e.target.value)}
+          />
         </FormGroup>
 
         <FormGroup className={classes.formGroup}>
@@ -326,25 +361,30 @@ export default ({initialData, contact, nextDialog}) => {
           )}
         </FormGroup>
 
-        <div className={dialogClasses.dialogActions}>
-          <Button type="submit"
-                  color="secondary"
-                  variant="contained"
-                  disabled={saving}>
-            Save
-          </Button>
-          <Button type="button"
-                  color="secondary"
-                  variant="outlined"
-                  onClick={() => {
-                    if(nextDialog) {
-                      openDialog(nextDialog);
-                    } else {
-                      closeDialog();
-                    }
-                  }}>
-            Cancel
-          </Button>
+        <div className={clsx(dialogClasses.dialogActions, dialogClasses.dialogActionsGrid)}>
+          <Grid container
+                direction="row"
+                justify="space-between"
+                wrap="nowrap">
+            <Button type="submit"
+                    color="primary"
+                    variant="outlined"
+                    disabled={saving}
+                    onClick={() => {
+                      submitRef.current = 'pay_now';
+                    }}>
+              Pay Now
+            </Button>
+            <Button type="submit"
+                    color="primary"
+                    variant="contained"
+                    disabled={saving}
+                    onClick={() => {
+                      submitRef.current = 'save';
+                    }}>
+              Save
+            </Button>
+          </Grid>
         </div>
       </form>
     </Dialog>
