@@ -4,8 +4,15 @@ import {
   Button,
   Checkbox,
   CircularProgress,
+  FormControl,
   FormControlLabel,
+  FormLabel,
+  FormGroup,
   Grid,
+  Radio,
+  RadioGroup,
+  Switch,
+  TextField,
 } from '@material-ui/core';
 import {Cancel as CancelIcon, CheckCircle as CheckCircleIcon} from '@material-ui/icons';
 import clsx from 'clsx';
@@ -16,12 +23,13 @@ import Dialog, {useStyles as dialogStyles} from '../containers/Dialog';
 
 import AppContext from '../../AppContext';
 
-import {NOTIFICATIONS, TASKS} from '../../helpers/contants';
+import {FIAT_CURRENCIES, NOTIFICATIONS, TASKS, WALLET_OPTIONS, WALLET_OPTIONS_LABELS} from '../../helpers/contants';
 import {getPaymentsTotal} from '../../helpers/utils';
 import {ERROR_MESSAGES} from '../../helpers/errors';
 import {listenForExtensionNotification, makeBackgroundRequest} from '../../helpers/routines';
 
 import contracts from '../../helpers/contracts.json';
+import useSmartWalletBalance from "../../hooks/useSmartWalletBalance";
 
 const useStyles = makeStyles((theme) => ({
   bold: {
@@ -74,6 +82,9 @@ const useStyles = makeStyles((theme) => ({
   },
   checkboxLabel: {
     fontSize: 14,
+  },
+  payoutMethod: {
+    margin: theme.spacing(2, 0),
   }
 }));
 
@@ -81,13 +92,14 @@ export default ({payments, nextDialog, state}) => {
   const classes = useStyles();
   const dialogClasses = dialogStyles();
 
-  const {screen, dialog, addresses, networks, currency, openDialog, closeDialog, addNotification, convertToCrypto, convertToPayableCrypto, convertPayableToDisplayValue, convertToFiat, getTransactions, updateHidePaymentNotice} = useContext(AppContext);
+  const {screen, dialog, addresses, networks, walletAddresses, currency, stableCoin, openDialog, closeDialog, addNotification, convertToCrypto, convertToPayableCrypto, convertPayableToDisplayValue, convertToFiat, getTransactions, updateHidePaymentNotice} = useContext(AppContext);
 
   const [processing, setProcessing] = useState(state && state.processing || false);
   const [sent, setSent] = useState(state && state.sent || false);
   const [paid, setPaid] = useState(state && state.paid || false);
   const [error, setError] = useState(state && state.error || null);
   const [balance, setBalance] = useState(state && state.balance || 0);
+  const [paymentMethod, setPaymentMethod] = useState(state && state.paymentMethod || WALLET_OPTIONS.SMART);
 
   const address = addresses && addresses[0] || '',
     networkId = networks && networks[0] || null,
@@ -96,7 +108,14 @@ export default ({payments, nextDialog, state}) => {
     numRecipients = (payments || []).length,
     cryptoBalance = convertPayableToDisplayValue(balance || 0),
     fiatBalance = convertToFiat(cryptoBalance),
+    walletAddress = networkId && walletAddresses && walletAddresses[networkId] || null,
     ERROR_PAYMENT_FAILED = `Failed to pay ${numRecipients} recipient${numRecipients === 1 ? '' : 's'}`;
+
+  const walletBalance = useSmartWalletBalance(walletAddress, networkId, currency);
+
+  const walletFiatBalance = new Decimal(walletBalance && walletBalance[FIAT_CURRENCIES.USD] || 0).toFixed(2);
+  const isSmartWalletPayment = paymentMethod === WALLET_OPTIONS.SMART;
+  const paymentMethodFiatBalance = isSmartWalletPayment?walletFiatBalance:fiatBalance;
 
   useEffect(() => {
     if (address) {
@@ -161,7 +180,7 @@ export default ({payments, nextDialog, state}) => {
       paymentError = null;
 
     if (address) {
-      if (payments.length === 1) {
+      if (payments.length === 1 && !isSmartWalletPayment) {
         // Compose single payment payload
         const payment = payments && payments[0] || null,
           to = payment && payment.address || null,
@@ -189,12 +208,38 @@ export default ({payments, nextDialog, state}) => {
         }
       } else if (payments.length >= 2) {
         // Compose multiple payment payload
-        const {abi, address: contractAddress} = contracts && contracts[networkId] || {};
-        if (abi && contractAddress) {
+        let abi = null,
+          contractAddress = null,
+          stableCoinAddress = null,
+          stableCoinDecimals = null;
+        if(isSmartWalletPayment) {
+          const contractDetails = contracts && contracts.wallet && contracts.wallet[networkId];
+          abi = contractDetails && contractDetails.abi;
+          contractAddress = walletAddress;
+          const stableCoinSymbol = stableCoin && stableCoin.symbol || null;
+          if(stableCoinSymbol && contracts && contracts.token && contracts.token[stableCoinSymbol]) {
+            const { chains :stableCoinChains, decimals } =  contracts.token[stableCoinSymbol] || {};
+            if(stableCoinChains && stableCoinChains[networkId] && Web3.utils.isAddress(stableCoinChains[networkId])) {
+              stableCoinAddress = stableCoinChains[networkId];
+            }
+            if(decimals) {
+              stableCoinDecimals = decimals;
+            }
+          }
+        } else {
+          const contractDetails = contracts && contracts.batch && contracts.batch[networkId];
+          abi = contractDetails && contractDetails.abi;
+          contractAddress = contractDetails && contractDetails.address;
+        }
+        if (abi && contractAddress && (!isSmartWalletPayment || stableCoinAddress)) {
+          const abiBatchTransfer = (abi || []).find(i => i.name === 'batchTransfer');
           const abiPayout = (abi || []).find(i => i.name === 'payout');
-          const abiPayoutArgs = (abiPayout && abiPayout.inputs || []).map(i => i.name) || [];
+          const abiBatchTransferArgs = (abiBatchTransfer && abiBatchTransfer.inputs || []).map(i => i.name) || (abiPayout && abiPayout.inputs || []).map(i => i.name) || [];
 
-          const isMultiTokenContract = abiPayoutArgs.includes('tokenPointers') && abiPayoutArgs.includes('tokenAddresses');
+          const isMultiTokenContract = (
+            abiBatchTransferArgs.includes('tokenAddressIndices') ||
+            abiBatchTransferArgs.includes('tokenPointers') // legacy name for tokenAddressIndices
+          ) && abiBatchTransferArgs.includes('tokenAddresses');
 
           let cryptoValueTotal = convertToPayableCrypto(fiatTotal),
             recipients = [],
@@ -203,23 +248,30 @@ export default ({payments, nextDialog, state}) => {
             tokenPointers = [],
             tokenAddresses = [];
 
+          const convertToPayableStableCoinValue = amount => {
+            return new Decimal(10).pow(stableCoinDecimals || 18).times(amount || 0).toFixed(0);
+          };
+
           for (const payment of (payments || [])) {
             const to = payment && payment.address || null,
               fiatAmount = payment && payment.amount || null,
-              cryptoValue = fiatAmount && convertToPayableCrypto(fiatAmount) || null;
+              cryptoValue = fiatAmount && (isSmartWalletPayment?convertToPayableStableCoinValue(fiatAmount):convertToPayableCrypto(fiatAmount)) || null;
 
             recipients.push(to);
             rawValues.push(cryptoValue);
             values.push(Web3.utils.toHex(cryptoValue));
 
             if (isMultiTokenContract) {
-              tokenPointers.push(Web3.utils.toHex(0));
+              tokenPointers.push(Web3.utils.toHex(isSmartWalletPayment?1:0));
             }
           }
+          if(isSmartWalletPayment) {
+            tokenAddresses.push(stableCoinAddress);
+          }
 
-          let payoutArguments = [recipients, values];
+          let batchTransferArguments = [recipients, values];
           if (isMultiTokenContract) {
-            payoutArguments = payoutArguments.concat([tokenPointers, tokenAddresses]);
+            batchTransferArguments = batchTransferArguments.concat([tokenPointers, tokenAddresses]);
           }
 
           paymentPayload = {
@@ -227,7 +279,7 @@ export default ({payments, nextDialog, state}) => {
             value: Web3.utils.toHex(cryptoValueTotal),
             abi,
             contractAddress,
-            data: payoutArguments,
+            data: batchTransferArguments,
             meta: {
               from: address,
               to: contractAddress,
@@ -241,10 +293,11 @@ export default ({payments, nextDialog, state}) => {
             snapshot: {
               screen,
               dialog
-            }
+            },
+            paymentMethod,
           };
         } else {
-          paymentError = ERROR_MESSAGES.NETWORK_BATCH_NOT_SUPPORTED;
+          paymentError = isSmartWalletPayment?ERROR_MESSAGES.SMART_WALLET_PAYMENT_FAILED:ERROR_MESSAGES.NETWORK_BATCH_NOT_SUPPORTED;
         }
       }
     } else {
@@ -350,6 +403,28 @@ export default ({payments, nextDialog, state}) => {
         </>
       )}
 
+      <FormControl component="fieldset"
+                   className={classes.payoutMethod}
+                   disabled={processing || sent}>
+        <FormLabel component="legend">Payment Source</FormLabel>
+        <RadioGroup
+          aria-label="gender"
+          name="controlled-radio-buttons-group"
+          value={paymentMethod}
+          onChange={e => {
+            setPaymentMethod(e.target.value);
+          }}
+        >
+          {Object.keys(WALLET_OPTIONS).map(key => {
+            const value = WALLET_OPTIONS[key],
+              label = WALLET_OPTIONS_LABELS[value] || value;
+            return (
+              <FormControlLabel value={value} control={<Radio />} label={label} />
+            );
+          })}
+        </RadioGroup>
+      </FormControl>
+
       <Grid container
             direction="row"
             justify="space-between"
@@ -358,7 +433,7 @@ export default ({payments, nextDialog, state}) => {
         <div>Total</div>
         <div className={classes.bold} style={{textAlign: 'right'}}>
           <div>${fiatTotal}</div>
-          {currency && (
+          {(currency && !isSmartWalletPayment) && (
             <div>{cryptoTotal}{' '}{currency}</div>
           ) || null}
         </div>
@@ -371,8 +446,8 @@ export default ({payments, nextDialog, state}) => {
             className={classes.payoutDetails}>
         <div>Balance</div>
         <div className={classes.bold} style={{textAlign: 'right'}}>
-          <div>${fiatBalance}</div>
-          {currency && (
+          <div>${paymentMethodFiatBalance}</div>
+          {(currency && !isSmartWalletPayment) && (
             <div>{cryptoBalance}{' '}{currency}</div>
           ) || null}
         </div>

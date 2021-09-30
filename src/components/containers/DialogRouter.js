@@ -5,6 +5,7 @@ import AddPayment from '../dialogs/AddPayment';
 import MakePayout from '../dialogs/MakePayout';
 import ConnectGoogleSheet from '../dialogs/ConnectGoogleSheet';
 import TransactionDetails from '../dialogs/TransactionDetails';
+import ChangeNetwork from '../dialogs/ChangeNetwork';
 
 import AppContext from '../../AppContext';
 
@@ -41,6 +42,11 @@ export default () => {
     case DIALOG_ACTIONS.SHOW_TRANSACTION_DETAILS: {
       return (
         <TransactionDetails {...data}/>
+      );
+    }
+    case DIALOG_ACTIONS.CHANGE_NETWORK: {
+      return (
+        <ChangeNetwork {...data}/>
       );
     }
     default: {

@@ -10,6 +10,7 @@ import {
 import {Alert} from '@material-ui/lab';
 import clsx from 'clsx';
 
+import Copy from '../shared/Copy';
 import SearchAndAdd from '../shared/SearchAndAdd';
 
 import AppContext from '../../AppContext';
@@ -133,9 +134,11 @@ export default () => {
                             {contact.email}
                           </div>
                         ) || null}
-                        <div className={cardClasses.subheader}>
-                          {truncateAddress(contact.address)}
-                        </div>
+                        <Copy text={contact.address}>
+                          <div className={cardClasses.subheader}>
+                            {truncateAddress(contact.address)}
+                          </div>
+                        </Copy>
                       </div>
                       <div>
                         <div className={cardClasses.subheader}>

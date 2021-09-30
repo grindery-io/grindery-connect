@@ -1,29 +1,15 @@
-import React, {useContext, useEffect, useState} from 'react';
+import React, {useContext} from 'react';
 import {makeStyles} from '@material-ui/core/styles';
-import {
-  Button,
-  Checkbox,
-  CircularProgress,
-  FormControlLabel,
-  Grid,
-} from '@material-ui/core';
-import {Cancel as CancelIcon, CheckCircle as CheckCircleIcon} from '@material-ui/icons';
-import clsx from 'clsx';
+import {Button, Grid} from '@material-ui/core';
 import moment from 'moment';
 
 import Dialog from '../containers/Dialog';
+import Copy from '../shared/Copy';
 
 import AppContext from '../../AppContext';
 
-import {
-  NOTIFICATIONS,
-  TASKS,
-  ADDRESS_EXAMPLE,
-  TRANSACTION_DIRECTIONS,
-  ADDRESS_IL_SENDER,
-  ADDRESS_TIM_RECIPIENT
-} from '../../helpers/contants';
-import {getPaymentContact, getPaymentsTotal, truncateAddress} from '../../helpers/utils';
+import {TRANSACTION_DIRECTIONS} from '../../helpers/contants';
+import {getPaymentContact, truncateAddress} from '../../helpers/utils';
 
 const useStyles = makeStyles((theme) => ({
   bold: {
@@ -103,8 +89,8 @@ export default ({payment, transaction, nextDialog, state}) => {
   let transactorName = null,
     transactorAddress = null;
   if(transaction.direction === TRANSACTION_DIRECTIONS.IN) {
-    transactorName = transaction.sender || 'InboundLabs';
-    transactorAddress = transaction.from || ADDRESS_IL_SENDER;
+    transactorName = transaction.sender;
+    transactorAddress = transaction.from;
   } else {
     const contact = payment.contact || getPaymentContact(payment, contacts);
     transactorName = (contact && contact.name) || (payment && payment.name);
@@ -135,9 +121,11 @@ export default ({payment, transaction, nextDialog, state}) => {
         {transactorName || 'InboundLabs'}
       </div>
 
-      <div className={classes.address}>
-        {truncateAddress(transactorAddress || ADDRESS_IL_SENDER)}
-      </div>
+      <Copy text={transactorAddress}>
+        <div className={classes.address}>
+          {truncateAddress(transactorAddress)}
+        </div>
+      </Copy>
 
       <div className={classes.details}>
         Transaction Details<br/>

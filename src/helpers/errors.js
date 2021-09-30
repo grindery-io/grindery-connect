@@ -24,6 +24,9 @@ export const ERROR_MESSAGES = {
   GOOGLE_SHEETS_MERGE_FAILED: 'Failed to merge with Google Sheet.',
   NETWORK_BATCH_NOT_SUPPORTED: 'Batch payments are not supported on the current network.',
   METAMASK_AUTH_REQUIRED: 'Please sign into MetaMask.',
+  CREATE_WALLET_FAILED: 'Failed to create wallet',
+  AMOUNT_MORE_THAN_BALANCE: 'Amount must be less than the available balance.',
+  SMART_WALLET_PAYMENT_FAILED: 'Failed to make payment from smart wallet.',
 };
 
 export class GrinderyError extends Error {

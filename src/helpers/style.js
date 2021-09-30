@@ -15,6 +15,7 @@ export const COLORS = {
 export const DIMENSIONS = {
   width: 415,
   dialogHorizontalMargin: 40,
+  dialogHorizontalMarginBig: 100,
 };
 
 export const theme = createMuiTheme({
@@ -73,16 +74,25 @@ export const cardStyles = makeStyles((theme) => ({
     lineHeight: 1.6,
     marginBottom: theme.spacing(1),
     borderRadius: 5,
-    //boxShadow: 'none',
-    boxShadow: 'inset 0 1px 0px rgba(0, 0, 0, 0.1), inset -1px 0 0 rgba(0, 0, 0, 0.1), inset 0 -1px 0px rgba(0, 0, 0, 0.1), inset 1px 0 0 rgba(0, 0, 0, 0.1)',
+    boxShadow: 'none',
+    //boxShadow: 'inset 0 1px 0px rgba(0, 0, 0, 0.1), inset -1px 0 0 rgba(0, 0, 0, 0.1), inset 0 -1px 0px rgba(0, 0, 0, 0.1), inset 1px 0 0 rgba(0, 0, 0, 0.1)',
+    border: `1px solid #D3DEEC`,
     cursor: 'pointer',
     '&:last-child': {
       marginBottom: theme.spacing(0.5),
     },
+    '&:hover': {
+      borderColor: theme.palette.secondary.main,
+    },
     '&.selected': {
       borderColor: theme.palette.secondary.main,
       backgroundColor: COLORS.secondaryLighter,
-    }
+    },
+    '&.alert': {
+      color: theme.palette.common.white,
+      borderColor: theme.palette.secondary.main,
+      backgroundColor: theme.palette.secondary.main,
+    },
   },
   content: {
     display: 'flex',

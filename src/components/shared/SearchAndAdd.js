@@ -12,8 +12,8 @@ const useStyles = makeStyles((theme) => ({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    position: 'sticky',
-    top: 0,
+    //position: 'sticky',
+    //top: 0,
     zIndex: 1,
     marginBottom: theme.spacing(2),
   }

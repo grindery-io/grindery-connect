@@ -11,14 +11,21 @@ import Web3 from 'web3';
 
 import TabBar from './TabBar';
 import AppTitleBar from './AppTitleBar';
-import ScreenTitleBar from './ScreenTitleBar';
 import ContentRouter from './ContentRouter';
 import DialogRouter from './DialogRouter';
 import ErrorBoundary from './ErrorBoundary';
 
 import AppContext, {defaultAppState} from '../../AppContext';
 
-import {DIALOG_ACTIONS, SCREENS, TASKS, WALLET_EVENTS} from '../../helpers/contants';
+import {
+  DIALOG_ACTIONS,
+  FIAT_CURRENCIES,
+  SCREENS,
+  DEFAULT_STABLE_COINS,
+  TASKS,
+  WALLET_EVENTS,
+  NOTIFICATIONS
+} from '../../helpers/contants';
 import {
   STORAGE_KEYS,
   readFromStorage,
@@ -30,7 +37,9 @@ import {
   setHidePrePaymentNotice,
   getHidePrePaymentNotice,
   getHash,
-  saveHash, saveAddresses, saveNetwork
+  saveHash,
+  saveAddresses,
+  saveNetwork, getWalletAddresses
 } from '../../helpers/storage';
 import {
   contactComparator,
@@ -41,7 +50,7 @@ import {
   getChains,
   getPriceData,
 } from '../../helpers/utils';
-import {listenForExtensionEvent, makeBackgroundRequest} from '../../helpers/routines';
+import {listenForExtensionEvent, listenForExtensionNotification, makeBackgroundRequest} from '../../helpers/routines';
 import {ERROR_MESSAGES, GrinderyError} from '../../helpers/errors';
 import {COLORS, DIMENSIONS} from '../../helpers/style';
 
@@ -77,6 +86,7 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     flexGrow: 1,
+    overflowY: 'auto',
   },
   mainContentContainer: {
     flexGrow: 1,
@@ -128,10 +138,15 @@ export default () => {
 
   // Data
   const [addresses, setAddresses] = useState([]);
+  const [walletAddresses, setWalletAddresses] = useState({});
   const [networks, setNetworks] = useState(null);
   const [currency, setCurrency] = useState(null);
   const [decimals, setDecimals] = useState(18);
   const [rate, setRate] = useState(0);
+
+  const [fiatCurrency, setFiatCurrency] = useState(FIAT_CURRENCIES.USD);
+  const [stableCoin, setStableCoin] = useState(DEFAULT_STABLE_COINS.UST_HARMONY_TEST);
+
   const [contacts, setContacts] = useState([]);
   const [payments, setPayments] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -216,6 +231,14 @@ export default () => {
       }).catch(() => {
         listenToWalletEvents();
       });
+
+      getSmartWalletInfo().then(() => {
+        listenToSmartWalletEvents();
+      }).catch(() => {
+        listenToSmartWalletEvents();
+      });
+
+      getCurrencyPreferences().catch(() => {});
 
       getContacts().catch(() => {});
       getPayments().catch(() => {});
@@ -465,8 +488,54 @@ export default () => {
     });
   };
 
+  const getSmartWalletInfo = () => {
+    return getWalletAddresses().then(res => {
+      const data = res && typeof res === 'object'?res:{};
+      setWalletAddresses(data);
+      return data;
+    }).catch(e => {
+      setWalletAddresses({});
+      throw new GrinderyError(e);
+    });
+  };
+
+  const listenToSmartWalletEvents = () => {
+    listenForExtensionNotification([
+      NOTIFICATIONS.CREATE_WALLET_INITIATED,
+      NOTIFICATIONS.CREATE_WALLET_COMPLETED,
+      NOTIFICATIONS.CREATE_WALLET_FAILED
+    ], (event, payload) => {
+      if(payload && payload.contractAddress) {
+        getSmartWalletInfo().catch(() => {});
+      }
+    });
+  };
+
   const getNetworkById = id => {
     return (chains || []).find(i => id && i && i.chainId === id) || null;
+  };
+
+  const getCurrencyPreferences = () => {
+    return Promise.all([
+      readFromStorage(STORAGE_KEYS.FIAT_CURRENCY).then(value => {
+        if(value && typeof value === 'string') {
+          setFiatCurrency(value);
+          return value;
+        }
+        updateFiatCurrency(FIAT_CURRENCIES.USD);
+      }).catch(() => {
+        updateFiatCurrency(FIAT_CURRENCIES.USD);
+      }),
+      readFromStorage(STORAGE_KEYS.STABLE_COIN).then(value => {
+        if(value && typeof value === 'object') {
+          setStableCoin(value);
+          return value;
+        }
+        updateStableCoin(DEFAULT_STABLE_COINS.UST_HARMONY_TEST);
+      }).catch(() => {
+        updateStableCoin(DEFAULT_STABLE_COINS.UST_HARMONY_TEST);
+      })
+    ]);
   };
 
   const getContacts = () => {
@@ -539,6 +608,28 @@ export default () => {
       decimalFiat = decimalValue.dividedBy(decimalRate);
     }
     return decimalFiat.toFixed(2);
+  };
+
+  const updateFiatCurrency = value => {
+    if(value) {
+      return writeToStorage(STORAGE_KEYS.FIAT_CURRENCY, value).then(res => {
+        setFiatCurrency(value);
+        return value;
+      }).catch(e => {
+        throw new GrinderyError(e, ERROR_MESSAGES.SAVE_FAILED);
+      });
+    }
+  };
+
+  const updateStableCoin = value => {
+    if(value) {
+      return writeToStorage(STORAGE_KEYS.STABLE_COIN, value).then(res => {
+        setStableCoin(value);
+        return value;
+      }).catch(e => {
+        throw new GrinderyError(e, ERROR_MESSAGES.SAVE_FAILED);
+      });
+    }
   };
 
   const addContact = data => {
@@ -634,8 +725,13 @@ export default () => {
       screen,
       dialog,
       addresses,
+      walletAddresses,
       networks,
       currency,
+
+      fiatCurrency,
+      stableCoin,
+
       contacts,
       payments,
       transactions,
@@ -674,13 +770,17 @@ export default () => {
         setHidePaymentNotice(true);
         setHidePrePaymentNotice().catch(() => {});
       },
+
       // Wallet
       getWalletInfo,
+      getSmartWalletInfo,
       getNetworkById,
       convertToCrypto,
       convertToPayableCrypto,
       convertPayableToDisplayValue,
       convertToFiat,
+      updateFiatCurrency,
+      updateStableCoin,
       // Contacts
       getContacts,
       addContact,
@@ -704,12 +804,6 @@ export default () => {
         <ErrorBoundary>
           <div className={classes.layout}>
             <div className={classes.mainContentContainer}>
-              {/*
-              <ErrorBoundary>
-                <ScreenTitleBar/>
-              </ErrorBoundary>
-              */}
-
               {accessToken && notifications.length && (
                 <ErrorBoundary>
                   {notifications.filter(i => i.title).map((notification, idx) => (
@@ -726,8 +820,9 @@ export default () => {
               ) || null}
 
               <div className={clsx(classes.mainContent, {
-                //[classes.mainContentGreyBg]: [SCREENS.HOME, SCREENS.CONTACTS, SCREENS.PAYMENTS, SCREENS.TRANSACTIONS].includes(screen),
-                [classes.mainContentNoPadding]: [SCREENS.CONTRACTS, SCREENS.PAYMENTS, SCREENS.TRANSACTIONS].includes(screen),
+                [classes.mainContentNoPadding]: [
+                  SCREENS.CONTRACTS, SCREENS.PAYMENTS, SCREENS.TRANSACTIONS, SCREENS.FUND, SCREENS.WITHDRAW
+                ].includes(screen),
               })}>
                 <ErrorBoundary>
                   {sessionInitialized && (

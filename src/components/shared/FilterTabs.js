@@ -7,10 +7,10 @@ import {
 } from '@material-ui/core';
 import clsx from 'clsx';
 
-import {TRANSACTION_VIEWS} from '../../helpers/contants';
-
 const useStyles = makeStyles((theme) => ({
   container: {
+    position: 'sticky',
+    top: 0,
     backgroundColor: theme.palette.common.white,
     marginBottom: theme.spacing(1),
   },

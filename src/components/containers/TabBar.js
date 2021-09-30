@@ -1,6 +1,6 @@
 import React, {useContext} from 'react';
 import {makeStyles} from '@material-ui/core/styles';
-import {Paper, Tabs, Tab} from '@material-ui/core';
+import {Paper, Tabs, Tab, Tooltip} from '@material-ui/core';
 import clsx from 'clsx';
 
 import AppContext from '../../AppContext';
@@ -20,16 +20,18 @@ const useStyles = makeStyles((theme) => ({
   icon: {
     height: 24,
   },
-  iconSmaller: {
-    height: 22,
-  }
 }));
 
 export default () => {
   const classes = useStyles();
   const {accessToken, screen, changeScreen} = useContext(AppContext);
 
-  const tabScreens = [SCREENS.HOME, SCREENS.CONTACTS, SCREENS.CONTRACTS, SCREENS.PAYMENTS, SCREENS.TRANSACTIONS, SCREENS.SETTINGS];
+  const tabScreens = [
+    SCREENS.HOME, SCREENS.CONTACTS,
+    SCREENS.CONTRACTS, SCREENS.PAYMENTS,
+    SCREENS.WALLET, SCREENS.FUND, SCREENS.WITHDRAW,
+    SCREENS.TRANSACTIONS, SCREENS.SETTINGS
+  ];
   const currentIdx = accessToken?Math.max(0, tabScreens.findIndex(i => i === screen) || 0):-1;
   return (
     <Paper square className={classes.container}>
@@ -51,17 +53,19 @@ export default () => {
       >
         {tabScreens.map((screen, idx) => {
           const screenIcons = getScreenDetails(screen, 'icon');
-          const icon = screenIcons && screenIcons.main,
+          const title = getScreenDetails(screen, 'tooltip') || getScreenDetails(screen, 'title'),
+            icon = screenIcons && screenIcons.main,
             iconLight = screenIcons && (screenIcons.light || screenIcons.main);
 
           return (
             <Tab className={classes.tab}
                  aria-label={screen}
                  icon={(
-                   <img src={currentIdx !== idx?iconLight:icon}
-                        className={clsx(classes.icon, {
-                          [classes.iconSmaller]: screen === SCREENS.TRANSACTIONS,
-                        })}/>
+                   <Tooltip title={title}
+                            placement="left">
+                     <img src={currentIdx !== idx?iconLight:icon}
+                          className={classes.icon}/>
+                   </Tooltip>
                  )}
             />
           );

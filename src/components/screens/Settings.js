@@ -1,14 +1,22 @@
 /*global chrome*/
 import React, {useContext, useEffect, useState} from 'react';
 import {makeStyles} from '@material-ui/core/styles';
-import {Button, CircularProgress, Grid, Typography} from '@material-ui/core';
+import {Button, CircularProgress, FormControlLabel, Grid, MenuItem, Switch, Select} from '@material-ui/core';
 import {Alert} from '@material-ui/lab';
 
 import AppContext from '../../AppContext';
 
-import {DIALOG_ACTIONS, INTEGRATIONS} from '../../helpers/contants';
+import {DIALOG_ACTIONS, FIAT_CURRENCIES, INTEGRATIONS, DEFAULT_STABLE_COINS} from '../../helpers/contants';
 import {getIntegrationDetails} from '../../helpers/utils';
 import {ERROR_MESSAGES} from '../../helpers/errors';
+import {getAdvancedMode, saveAdvancedMode} from "../../helpers/storage";
+
+let manifest = null;
+try {
+  manifest = chrome.runtime.getManifest();
+} catch (e) {
+  //
+}
 
 const useStyles = makeStyles((theme) => ({
   container: {
@@ -21,6 +29,34 @@ const useStyles = makeStyles((theme) => ({
     fontWeight: 'bold',
     lineHeight: 1,
     margin: theme.spacing(0.5, 0, 4, 0),
+  },
+  group: {
+    borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+    paddingBottom: theme.spacing(3.125),
+    marginBottom: theme.spacing(2.5),
+    '& > *': {
+      margin: theme.spacing(1.5, 0),
+    },
+  },
+  toggleContainer: {
+    width: '100%',
+    display: 'flex',
+    margin: 0,
+    justifyContent: 'space-between',
+  },
+  settingsRow: {
+    minHeight: 34,
+  },
+  settingsLabel: {
+    fontSize: 14,
+    lineHeight: 1.5,
+  },
+  settingsSelect: {
+    fontSize: 14,
+    lineHeight: 1.5,
+    '&:before': {
+      borderWidth: 0,
+    }
   },
   integration: {
     padding: theme.spacing(2.75, 0),
@@ -50,25 +86,28 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-let manifest = null;
-try {
-  manifest = chrome.runtime.getManifest();
-} catch (e) {
-  //
-}
-
 export default () => {
   const classes = useStyles();
-  const {integrations, openDialog, getIntegrations, removeIntegration} = useContext(AppContext);
+  const {fiatCurrency, stableCoin, updateFiatCurrency, updateStableCoin, integrations, openDialog, getIntegrations, removeIntegration} = useContext(AppContext);
 
+  const [advancedMode, setAdvancedMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [connecting, setConnecting] = useState({});
+
+  let coinNameToKeyMap = {};
+  for (const key of Object.keys(DEFAULT_STABLE_COINS)) {
+    coinNameToKeyMap[DEFAULT_STABLE_COINS[key].name] = key;
+  }
 
   useEffect(() => {
     // Load payments
     setLoading(true);
     setError(null);
+
+    getAdvancedMode().then(enabled => {
+      setAdvancedMode(!!enabled);
+    });
 
     getIntegrations().then(integrations => {
       setLoading(false);
@@ -77,6 +116,11 @@ export default () => {
       setError(ERROR_MESSAGES.READ_INTEGRATIONS_FAILED);
     });
   }, []);
+
+  const onUpdateAdvancedMode = enabled => {
+    setAdvancedMode(!!enabled);
+    saveAdvancedMode(!!enabled).catch(() => {});
+  };
 
   const onConnect = name => {
     setConnecting({...connecting, [name]: true});
@@ -98,6 +142,90 @@ export default () => {
   return (
     <div className={classes.container}>
       <div className={classes.header}>General Settings</div>
+
+      <div className={classes.group}>
+        <FormControlLabel
+          control={
+            <Switch
+              name="advanced_mode"
+              color="secondary"
+              checked={advancedMode}
+              onChange={() => onUpdateAdvancedMode(!advancedMode)}
+            />
+          }
+          label="Advanced mode"
+          labelPlacement="start"
+          className={classes.toggleContainer}
+          classes={{
+            label: classes.settingsLabel,
+          }}
+        />
+
+        <Grid container
+              direction="row"
+              justify="space-between"
+              alignItems="center"
+              className={classes.settingsRow}>
+          <div className={classes.settingsLabel}>
+            Display currency
+          </div>
+
+          {advancedMode && (
+            <Select
+              labelId="fiat-currency"
+              id="fiat-currency"
+              value={fiatCurrency}
+              onChange={e => updateFiatCurrency(e.target.value)}
+              className={classes.settingsSelect}>
+              {Object.keys(FIAT_CURRENCIES).map(key => {
+                const code = FIAT_CURRENCIES[key];
+                return (
+                  <MenuItem value={code}>{code}</MenuItem>
+                );
+              })}
+            </Select>
+          ) || (
+            <div className={classes.settingsLabel}>
+              {fiatCurrency}
+            </div>
+          )}
+        </Grid>
+
+        <Grid container
+              direction="row"
+              justify="space-between"
+              alignItems="center"
+              className={classes.settingsRow}>
+          <div className={classes.settingsLabel}>
+            Default stable coin
+          </div>
+
+          {advancedMode && (
+            <Select
+              labelId="stable-coin"
+              id="stable-coin"
+              value={stableCoin && stableCoin.name && coinNameToKeyMap[stableCoin.name]}
+              onChange={e => {
+                const key = e.target.value;
+                if(key && DEFAULT_STABLE_COINS[key]) {
+                  updateStableCoin(DEFAULT_STABLE_COINS[key]);
+                }
+              }}
+              className={classes.settingsSelect}>
+              {Object.keys(DEFAULT_STABLE_COINS).map(key => {
+                const option = DEFAULT_STABLE_COINS[key];
+                return (
+                  <MenuItem value={key}>{option.name}</MenuItem>
+                );
+              })}
+            </Select>
+          ) || (
+            <div className={classes.settingsLabel}>
+              {stableCoin && stableCoin.name}
+            </div>
+          )}
+        </Grid>
+      </div>
 
       {loading && (
         <div className={classes.loading}>

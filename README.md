@@ -1,70 +1,35 @@
-# Getting Started with Create React App
+# Grindery Pay
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Smart Contracts
 
-## Available Scripts
+See `/contracts` directory
 
-In the project directory, you can run:
+We’ve built a smart contract wallet along with a trust-less protocol that allows relayers and reward miners to facilitate: 
 
-### `yarn start`
+- Auto swapping of received assets into a token of the user's preference on Harmony (e.g UST on Harmony)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- Bridging of ETH to Harmony and then auto-swapping it into the user's preferred token on Harmony
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+- Swapping and bridging user's preferred token to Ethereum to facilitate easy off ramps to FIAT via ETH exchanges 
 
-### `yarn test`
+- Bridging ETH to and from Ethereum  of received assets into a stable coins (UST on Harmony by default) of the user’s preference.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Bridging UST from Harmony to Terra
 
-### `yarn build`
+1. `/contracts/GrinderyWalletHarmonyTest.sol`
+Harmony smart wallet with support for initiation of trust-less swapping and bridging of held assets
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+2. `/contracts/GrinderyWalletEth.sol`
+Ethereum smart wallet with support for initiation of trust-less bridging of ETH and ERC20 tokens to Harmony
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+3. `/contracts/GrinderySwap.sol`
+Swap protocol contract that allows relayers and reward miners to trust-lessly facilitate swapping of assets for smart wallets.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+4. `/contracts/GrinderyTreasury.sol`
+Treasury wallet for swap and bridge protocol, will reward relayers and reward miners in the future
 
-### `yarn eject`
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## Chrome Extension
+See `/src` and `/public` directories
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `yarn build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+User Interface that allows users to create smart wallets, fund them, withdraw and send batch transfers/payouts

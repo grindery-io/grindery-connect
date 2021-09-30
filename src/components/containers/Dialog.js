@@ -17,13 +17,18 @@ export const useStyles = makeStyles((theme) => ({
   dialog: {
     width: `calc(100% - ${DIMENSIONS.dialogHorizontalMargin*2}px)`,
     maxWidth: `calc(${DIMENSIONS.width}px - ${DIMENSIONS.dialogHorizontalMargin*2}px)`,
-    inset: `${theme.spacing(15)}px auto auto ${DIMENSIONS.dialogHorizontalMargin}px  !important`,
+    inset: `${theme.spacing(6.875)}px auto auto ${DIMENSIONS.dialogHorizontalMargin}px  !important`,
   },
   dialogTall: {
-    top: `${theme.spacing(11.25)}px !important`,
+    //top: `${theme.spacing(11.25)}px !important`,
   },
   dialogTaller: {
     top: `${theme.spacing(5)}px !important`,
+  },
+  dialogNarrow: {
+    width: `calc(100% - ${DIMENSIONS.dialogHorizontalMarginBig*2}px)`,
+    maxWidth: `calc(${DIMENSIONS.width}px - ${DIMENSIONS.dialogHorizontalMarginBig*2}px)`,
+    inset: `${theme.spacing(6.875)}px auto auto ${DIMENSIONS.dialogHorizontalMarginBig}px  !important`,
   },
   dialogTitle: {
     position: 'relative',
@@ -81,7 +86,7 @@ export const useStyles = makeStyles((theme) => ({
   },
 }));
 
-export default ({children, title, content, actions, className, onClose, ariaLabel, ...props}) => {
+export default ({children, title, content, actions, className, onClose, ariaLabel, closeOnOutsideClick, ...props}) => {
   const classes = useStyles();
 
   return (
@@ -89,25 +94,32 @@ export default ({children, title, content, actions, className, onClose, ariaLabe
             open={true}
             onClose={onClose}
             fullScreen={true}
-            disableBackdropClick={true}
-            disableEscapeKeyDown={true}
+            disableBackdropClick={!closeOnOutsideClick}
+            disableEscapeKeyDown={!closeOnOutsideClick}
+            onBackdropClick={() => {
+              if(closeOnOutsideClick) {
+                onClose();
+              }
+            }}
             className={className || ''}
             classes={{
               root: classes.dialog,
               paper: classes.dialogContainer,
             }}
             aria-labelledby={ariaLabel || (typeof title === 'string' && title) || ''}>
-      <DialogTitle className={classes.dialogTitle}>
-        {title || ''}
+      {title && (
+          <DialogTitle className={classes.dialogTitle}>
+            {title || ''}
 
-        {onClose && (
-          <IconButton className={classes.dialogClose}
-                      aria-label="close"
-                      onClick={onClose}>
-            <img src={closeIcon}/>
-          </IconButton>
-        ) || null}
-      </DialogTitle>
+            {(onClose && !closeOnOutsideClick) && (
+                <IconButton className={classes.dialogClose}
+                            aria-label="close"
+                            onClick={onClose}>
+                  <img src={closeIcon}/>
+                </IconButton>
+            ) || null}
+          </DialogTitle>
+      )}
 
       <DialogContent className={classes.dialogContent}>
         {children || content}

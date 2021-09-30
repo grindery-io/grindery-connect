@@ -1,4 +1,5 @@
 import React from 'react';
+import {FIAT_CURRENCIES, DEFAULT_STABLE_COINS} from './helpers/contants';
 
 export const defaultAppState = {
   isNewUser: false,
@@ -7,9 +8,12 @@ export const defaultAppState = {
   screen: null,
   dialog: null,
   addresses: [],
+  walletAddresses: {},
   networks: null,
   currency: null,
   rate: 0,
+  fiatCurrency: FIAT_CURRENCIES,
+  stableCoin: DEFAULT_STABLE_COINS.UST_HARMONY_TEST,
   contacts: [],
   payments: [],
   transactions: [],
@@ -32,11 +36,14 @@ export default React.createContext({
 
   // Wallet
   getWalletInfo: defaultFunction(),
+  getSmartWalletInfo: defaultFunction(),
   getNetworkById: defaultFunction(),
   convertToCrypto: defaultFunction(),
   convertToPayableCrypto: defaultFunction(),
   convertPayableToDisplayValue: defaultFunction(),
   convertToFiat: defaultFunction(),
+  updateFiatCurrency: defaultFunction(),
+  updateStableCoin: defaultFunction(),
 
   // Contacts
   getContacts: defaultFunction(),

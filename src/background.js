@@ -2,7 +2,15 @@
 import Web3 from 'web3';
 import moment from 'moment';
 
-import {MESSAGE_TYPES, NOTIFICATIONS, TASKS, WALLET_EVENTS} from './helpers/contants';
+import {
+  MESSAGE_TYPES,
+  NOTIFICATIONS,
+  TASKS,
+  CUSTOM_TOKENS,
+  WALLET_EVENTS,
+  WALLET_OPTIONS,
+  NETWORKS, ADDRESS_ZERO
+} from './helpers/contants';
 import {getAccounts, getBalance, getNetwork, requestAccounts} from './helpers/metamask';
 import {
   getTransactions,
@@ -10,7 +18,8 @@ import {
   saveNetwork,
   saveSnapshot,
   saveTransaction,
-  saveTransactions
+  saveTransactions,
+  saveWalletAddress
 } from './helpers/storage';
 import {
   getWeb3Instance,
@@ -20,6 +29,8 @@ import {
 } from './helpers/routines';
 import {ERROR_MESSAGES} from './helpers/errors';
 import {getNetworkExplorerUrl, getPaymentsTotal} from './helpers/utils';
+
+import contracts from './helpers/contracts.json';
 
 const isPopUpOpen = () => {
   const popups = chrome.extension.getViews({ type: 'popup' });
@@ -86,6 +97,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               });
             }
           }
+          return false;
         }
         case TASKS.GET_NETWORK: {
           getNetwork(web3)
@@ -97,8 +109,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return true;
         }
         case TASKS.GET_BALANCE: {
-          if(payload && payload.address) {
-            getBalance(payload.address, web3)
+          const {address} = payload || {};
+          if(address) {
+            getBalance(address, web3)
               .then(balance => sendSuccessResponse(balance))
               .catch(e => sendErrorResponse(e));
             return true;
@@ -109,18 +122,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case TASKS.MAKE_PAYOUT: {
           const paidAt = moment.utc().format();
           if(payload) {
-            const { from, to, value, abi, contractAddress, data, meta, snapshot } = payload || {};
+            const { from, to, value, abi, contractAddress, data, meta, snapshot, paymentMethod } = payload || {};
             if(from && value) {
               let walletCall = null,
                 errorMessage = '';
               if(abi && contractAddress && data) {
                 // Contract Payout
                 const contract = new web3.eth.Contract(abi, contractAddress);
-                const payoutArguments = data || [];
-                if(contract && contract.methods && contract.methods.payout) {
-                  walletCall = contract.methods.payout(...payoutArguments).send({
+                const batchTransferArguments = data || [];
+                const contractCall = contract && contract.methods && (contract.methods.batchTransfer || contract.methods.payout);
+
+                if(contractCall) {
+                  walletCall = contractCall(...batchTransferArguments).send({
                     from,
-                    value: Web3.utils.toHex(value),
+                    value: Web3.utils.toHex(
+                      paymentMethod !== WALLET_OPTIONS.SMART?0:value
+                    ),
                   });
                 } else {
                   errorMessage = ERROR_MESSAGES.NETWORK_BATCH_NOT_SUPPORTED;
@@ -255,10 +272,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                       }
                     }
                   }
-                });
+                }).catch(e => {
+                  console.error('failed to make payout => ', e);
+                });;
                 return true;
               } else {
                 sendErrorResponse(errorMessage);
+                return true;
               }
             }
           }
@@ -281,7 +301,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               for (const transaction of pendingTransactions) {
                 if (transaction && transaction.hash) {
                   const receipt = await web3.eth.getTransactionReceipt(transaction.hash).catch(() => {});
-                  if (receipt) {
+                  if (receipt && receipt.status) {
                     completedTransactions.push(transaction.hash);
                   }
                 }
@@ -304,6 +324,147 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendErrorResponse(e);
           });
           return true;
+        }
+        case TASKS.CREATE_WALLET: {
+          const { account, chain, smartWallets, stableCoin, terraAddress } = payload || {};
+          const contractDetails = chain && contracts && contracts.wallet && contracts.wallet[chain];
+          const { bytecode, swap, bridge, bridge_erc20, bridge_terra } = contractDetails && contractDetails;
+
+          if(account && chain && [
+            NETWORKS.HARMONY_TESTNET.chainId,
+            NETWORKS.KOVAN.chainId,
+            NETWORKS.ROPSTEN.chainId,
+          ].includes(chain) && bytecode) {
+            let constructorArgs = [];
+
+            if(chain === NETWORKS.KOVAN.chainId) {
+              constructorArgs = [
+                smartWallets[NETWORKS.HARMONY_TESTNET.chainId] || account, // _bridgeLockRecipient
+                bridge, // _bridgeLockContractAddress
+                bridge_erc20, // _bridgeLockERC20ContractAddress
+              ];
+            }
+
+            if(chain === NETWORKS.HARMONY_TESTNET.chainId) {
+              const getTokenAddress = symbol => {
+                return contracts && contracts.token && contracts.token[symbol] &&
+                  contracts.token[symbol].chains && contracts.token[symbol].chains[chain] || ADDRESS_ZERO;
+              };
+
+              constructorArgs = [
+                smartWallets[NETWORKS.KOVAN.chainId] || account, // _bridgeBurnRecipient
+                bridge_erc20, // _bridgeBurnERC20ContractAddress
+                terraAddress || Web3.utils.toHex(""), // _bridgeBurnTerraRecipient
+                bridge_terra, // _bridgeBurnTerraERC20ContractAddress
+                swap, // _swapContractAddress
+                getTokenAddress(stableCoin || 'UST'), // _swapTokenAddress
+                getTokenAddress('1ETH') // _swapToBridgeTokenAddress
+              ];
+            }
+
+            const transactionArgs = {
+              from: account,
+              data: bytecode,
+              arguments: constructorArgs,
+            };
+            const walletCall = web3.eth.sendTransaction(transactionArgs);
+            let confirmationsReceived = 0;
+            walletCall.on('transactionHash', (hash => {
+              // Transaction has been sent
+              sendExtensionNotification(NOTIFICATIONS.CREATE_WALLET_INITIATED, {
+                hash,
+              }).catch(() => {});
+
+              sendSuccessResponse(hash);
+            })).on('confirmation', ((confirmationNumber, receipt) => {
+              confirmationsReceived += 1;
+              if(receipt && receipt.contractAddress) {
+                if(confirmationsReceived < 2) {
+                  // save new wallet
+                  saveWalletAddress(chain, receipt.contractAddress).catch(() => {});
+
+                  sendExtensionNotification(NOTIFICATIONS.CREATE_WALLET_COMPLETED, {
+                    hash: receipt.transactionHash,
+                    contractAddress: receipt.contractAddress,
+                    receipt,
+                  }).catch(() => {});
+                }
+              }
+            })).on('receipt', (receipt => {
+              // Receipt
+              if(receipt && receipt.contractAddress) {
+                saveWalletAddress(chain, receipt.contractAddress).catch(() => {});
+              }
+            })).on('error', ((error, receipt) => {
+              sendErrorResponse();
+              if(receipt && receipt.transactionHash) {
+                sendExtensionNotification(NOTIFICATIONS.CREATE_WALLET_FAILED, {
+                  hash: receipt.transactionHash,
+                  error,
+                  receipt,
+                }).catch(() => {});
+              }
+            })).then(res => {
+              if(res && res.contractAddress) {
+                // save new wallet address
+                saveWalletAddress(chain, res.contractAddress).catch(e => {
+                  console.error('failed to save wallet => ', e);
+                });
+
+                sendExtensionNotification(NOTIFICATIONS.CREATE_WALLET_COMPLETED, {
+                  hash: res.transactionHash,
+                  contractAddress: res.contractAddress,
+                  receipt: res,
+                }).catch(() => {});
+
+                if(!isPopUpOpen()) {
+                  chrome.notifications.create('', {
+                    title: 'Smart Wallet created',
+                    message: 'Your smart wallet has been created',
+                    iconUrl: chrome.runtime.getURL('logo.png'),
+                    type: 'basic'
+                  }, () => {});
+                }
+              }
+            });
+            return true;
+          }
+          break;
+        }
+        case TASKS.CHANGE_NETWORK: {
+          const { chain } = payload || {}, provider = web3.currentProvider;
+          if(chain && provider) {
+            provider.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{
+                chainId: Web3.utils.toHex(chain)
+              }],
+            }).then(res => {
+              sendSuccessResponse(chain);
+            }).catch(e => {
+              sendErrorResponse();
+            });
+            return true;
+          }
+          break;
+        }
+        case TASKS.GET_TOKEN_BALANCE: {
+          const {address, token, chain} = payload || {};
+          const erc20abi = contracts && contracts.erc20 && contracts.erc20.abi,
+            tokenAddress = contracts && contracts.token && contracts.token[token] && contracts.token[token].chains && contracts.token[token].chains[chain];
+          if(address && token && chain && erc20abi && tokenAddress) {
+            const tokenAddress = contracts.token[token].chains[chain];
+            const contract = new web3.eth.Contract(erc20abi, tokenAddress);
+            if(contract && contract.methods && contract.methods.balanceOf) {
+              contract.methods.balanceOf(address).call().then(res => {
+                sendSuccessResponse(res);
+              }).catch(e => {
+                sendErrorResponse();
+              });
+              return true;
+            }
+          }
+          break;
         }
         default: {
           break;

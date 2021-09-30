@@ -96,7 +96,6 @@ export const sendContentRequest = (action, payload=null) => {
 export const listenForExtensionNotification = (events, callback) => {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if(chrome.runtime.lastError) {
-      //console.error('listenForExtensionNotification chrome.runtime.lastError => ', chrome.runtime.lastError.message || chrome.runtime.lastError);
       return;
     }
 
@@ -177,7 +176,6 @@ export const getSheetDataFromContacts = (sheetTitle, columnMap, columns, contact
           }
         }
 
-        // TODO: Reclaim on extra column to the right and 2 rows to the bottom
         if(rowValues.length && columnIndices.length === rowValues.length) {
           let groups = [],
             currentGroup = {row: idx, values: []};

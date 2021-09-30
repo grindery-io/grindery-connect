@@ -1,26 +1,37 @@
-import home from '../images/home.svg';
-import homeLight from '../images/home-light.svg';
-import contacts from '../images/contacts.svg';
-import contactsLight from '../images/contacts-light.svg';
-import payments from '../images/payments.svg';
-import paymentsLight from '../images/payments-light.svg';
-import settings from '../images/settings.svg';
-import settingsLight from '../images/settings-light.svg';
-import contracts from '../images/contracts.svg';
-import contractsLight from '../images/contracts-light.svg';
-import transactions from '../images/list.svg';
-import transactionsLight from '../images/list-light.svg';
+import homeIcon from '../images/home.svg';
+import homeIconLight from '../images/home-light.svg';
+import contactsIcon from '../images/contacts.svg';
+import contactsLightIcon from '../images/contacts-light.svg';
+import paymentsIcon from '../images/payments.svg';
+import paymentsLightIcon from '../images/payments-light.svg';
+import contractsIcon from '../images/contracts.svg';
+import contractsLightIcon from '../images/contracts-light.svg';
+import transactionsIcon from '../images/list.svg';
+import transactionsLightIcon from '../images/list-light.svg';
+import walletIcon from '../images/wallet.svg';
+import walletLightIcon from '../images/wallet-light.svg';
+import fundIcon from '../images/fund.svg';
+import fundLightIcon from '../images/fund-light.svg';
+import withdrawIcon from '../images/withdraw.svg';
+import withdrawLightIcon from '../images/withdraw-light.svg';
+import settingsIcon from '../images/settings.svg';
+import settingsLightIcon from '../images/settings-light.svg';
 
 import gustoLogo from '../images/gusto.svg';
 import googleSheetsLogo from '../images/google-sheets.svg';
 import circleLogo from '../images/circle.svg';
 
+import ETHIcon from '../images/ETH.svg';
+import ONEIcon from '../images/ONE.svg';
+import USTIcon from '../images/UST.svg';
+import BUSDIcon from '../images/BUSD.svg';
+import USDCIcon from '../images/USDC.svg';
+import LINKIcon from '../images/LINK.svg';
+import USDTIcon from '../images/USDT.svg';
+import DAIIcon from '../images/DAI.svg';
+
 export const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 export const ADDRESS_EXAMPLE = '0xab5801a7d398351b8be11c439e05c5b3259aec9a';
-export const ADDRESS_IL_SENDER = '0x0cBB9CCA778De38d48F1795E6B8C7E8C8FFAe59B';
-export const ADDRESS_TIM_RECIPIENT = '0xb33cB5D3ceD2A477A6C80910c2962De697dbbe48';
-export const ADDRESS_DAVID_SENDER = '0x7037f30B4F542ca66c06D377f79c6140947f49b1';
-export const ADDRESS_DAVID_RECIPIENT = '0x560b5C4f74194ac3004f37250CCF8F4A611447F1';
 
 export const EXTENSION_SELECTOR = 'grindery-payroll-extension-root';
 
@@ -40,12 +51,18 @@ export const TASKS = {
   MAKE_PAYOUT: 'make_payout',
   CLEAN_TRANSACTIONS: 'clean_transactions',
   SYNC_GOOGLE_SHEETS: 'sync_google_sheets',
+  CREATE_WALLET: 'create_wallet',
+  CHANGE_NETWORK: 'change_network',
+  GET_TOKEN_BALANCE: 'get_token_balance',
 };
 
 export const NOTIFICATIONS = {
   PAYOUT_INITIATED: 'payout_initiated',
   PAYOUT_COMPLETED: 'payout_completed',
   PAYOUT_FAILED: 'payout_failed',
+  CREATE_WALLET_INITIATED: 'create_wallet_initiated',
+  CREATE_WALLET_COMPLETED: 'create_wallet_completed',
+  CREATE_WALLET_FAILED: 'create_wallet_failed',
 };
 
 export const ACTIONS = {
@@ -60,6 +77,9 @@ export const SCREENS = {
   PAYMENTS: 'payments',
   CONTRACTS: 'contracts',
   TRANSACTIONS: 'transactions',
+  WALLET: 'wallet',
+  FUND: 'fund',
+  WITHDRAW: 'withdraw',
   SETTINGS: 'settings',
 };
 
@@ -67,43 +87,65 @@ export const SCREEN_DETAILS = {
   [SCREENS.HOME]: {
     title: 'Dashboard',
     icon: {
-      main: home,
-      light: homeLight,
+      main: homeIcon,
+      light: homeIconLight,
     }
   },
   [SCREENS.CONTACTS]: {
     title: 'Contacts',
     icon: {
-      main: contacts,
-      light: contactsLight,
+      main: contactsIcon,
+      light: contactsLightIcon,
     }
   },
   [SCREENS.PAYMENTS]: {
     title: 'Payments',
     icon: {
-      main: payments,
-      light: paymentsLight,
+      main: paymentsIcon,
+      light: paymentsLightIcon,
     }
   },
   [SCREENS.CONTRACTS]: {
     title: 'Contracts',
     icon: {
-      main: contracts,
-      light: contractsLight,
+      main: contractsIcon,
+      light: contractsLightIcon,
     }
   },
   [SCREENS.TRANSACTIONS]: {
     title: 'Transactions',
     icon: {
-      main: transactions,
-      light: transactionsLight,
+      main: transactionsIcon,
+      light: transactionsLightIcon,
+    }
+  },
+  [SCREENS.WALLET]: {
+    title: 'Wallet',
+    icon: {
+      main: walletIcon,
+      light: walletLightIcon,
+    }
+  },
+  [SCREENS.FUND]: {
+    title: 'Fund',
+    icon: {
+      main: fundIcon,
+      light: fundLightIcon,
+    }
+  },
+  [SCREENS.WITHDRAW]: {
+    title: 'Withdraw',
+    icon: {
+      main: withdrawIcon,
+      light: withdrawLightIcon,
     }
   },
   [SCREENS.SETTINGS]: {
     title: 'General Settings',
+    tooltip: 'Settings',
     icon: {
-      main: settings,
-      light: settingsLight,
+      main: settingsIcon,
+      light: settingsLightIcon,
     }
   },
 };
@@ -114,6 +156,7 @@ export const DIALOG_ACTIONS = {
   MAKE_PAYOUT: 'make_payout',
   CONNECT_GOOGLE_SHEET: 'connect_google_sheet',
   SHOW_TRANSACTION_DETAILS: 'show_transaction_details',
+  CHANGE_NETWORK: 'change_network',
 };
 
 export const PAYMENT_TYPES = {
@@ -204,4 +247,120 @@ export const WALLET_EVENTS = {
   MESSAGE: 'message',
   CONNECT: 'connect',
   DISCONNECT: 'disconnect',
+};
+
+export const WITHDRAW_VIEWS = {
+  FIAT: 'FIAT',
+  CRYPTO: 'CRYPTO',
+};
+
+export const FIAT_CURRENCIES = {
+  USD: 'USD',
+  //EUR: 'EUR',
+};
+
+export const NATIVE_TOKENS = {
+  ETH: 'ETH',
+  ONE: 'ONE',
+};
+
+export const CUSTOM_TOKENS = {
+  UST: 'UST',
+  BUSD: 'BUSD',
+  //USDC: 'USDC',
+  //DAI: 'DAI',
+  //USDT: 'USDT',
+  //LINK: 'LINK',
+};
+
+export const DEFAULT_STABLE_COINS = {
+  UST_HARMONY_TEST: {
+    symbol: CUSTOM_TOKENS.UST,
+    name: 'UST-Harmony Testnet',
+    chainId: 1666700000,
+    icon: USTIcon,
+  },
+  BUSD_HARMONY_TEST: {
+    symbol: CUSTOM_TOKENS.BUSD,
+    name: 'BUSD-Harmony Testnet',
+    chainId: 1666700000,
+    icon: BUSDIcon,
+  },
+  /*
+  UST_HARMONY: {
+    symbol: 'UST',
+    name: 'UST-Harmony',
+    chainId: 1666600000
+  },
+  BUSD_HARMONY: {
+    symbol: 'BUSD',
+    name: 'BUSD-Harmony',
+    chainId: 1666600000
+  },
+  */
+};
+
+export const TOKEN_ICONS = {
+  [NATIVE_TOKENS.ETH]: ETHIcon,
+  [NATIVE_TOKENS.ONE]: ONEIcon,
+  [CUSTOM_TOKENS.UST]: USTIcon,
+  [CUSTOM_TOKENS.BUSD]: BUSDIcon,
+  //[CUSTOM_TOKENS.USDC]: USDCIcon,
+  //[CUSTOM_TOKENS.USDT]: USDTIcon,
+  //[CUSTOM_TOKENS.DAI]: DAIIcon,
+  //[CUSTOM_TOKENS.LINK]: LINKIcon,
+};
+
+export const NETWORKS = {
+  ETHEREUM: {
+    icon: ETHIcon,
+    name: 'Ethereum',
+    chainId: 1,
+  },
+  HARMONY: {
+    icon: ONEIcon,
+    name: 'Harmony',
+    chainId: 1666600000,
+  },
+  HARMONY_TESTNET: {
+    icon: ONEIcon,
+    name: 'Harmony Testnet',
+    chainId: 1666700000,
+  },
+  ROPSTEN: {
+    icon: ETHIcon,
+    name: 'Ropsten Testnet',
+    chainId: 3,
+  },
+  RINKEBY: {
+    icon: ETHIcon,
+    name: 'Rinkeby Testnet',
+    chainId: 4,
+  },
+  GOERLI: {
+    icon: ETHIcon,
+    name: 'Goerli Testnet',
+    chainId: 5,
+  },
+  KOVAN: {
+    icon: ETHIcon,
+    name: 'Kovan Testnet',
+    chainId: 42,
+  },
+};
+
+export const SMART_WALLET_NETWORKS = [
+  NETWORKS.HARMONY_TESTNET,
+  NETWORKS.KOVAN,
+  NETWORKS.ROPSTEN,
+];
+
+export const WALLET_OPTIONS = {
+  SMART: 'smart',
+  DEFAULT: 'default',
+};
+
+export const WALLET_OPTIONS_LABELS = {
+  [WALLET_OPTIONS.DEFAULT]: 'Metamask',
+  [WALLET_OPTIONS.SMART]: 'Smart Wallet',
 };

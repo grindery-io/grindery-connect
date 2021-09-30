@@ -5,19 +5,21 @@ import {
   Button,
   Card,
   CardContent,
-  CircularProgress,
+  CircularProgress, FormControlLabel,
   Grid,
+  Switch,
 } from '@material-ui/core';
 import {Alert} from '@material-ui/lab';
 import _ from 'lodash';
 import clsx from 'clsx';
 
+import Copy from '../shared/Copy';
 import FilterTabs from '../shared/FilterTabs';
 import SearchAndAdd from '../shared/SearchAndAdd';
 
 import AppContext from '../../AppContext';
 
-import {DIALOG_ACTIONS, PAYMENT_DUE_STATES, PAYMENT_VIEWS, SCREENS, TRANSACTION_VIEWS} from '../../helpers/contants';
+import {DIALOG_ACTIONS, PAYMENT_DUE_STATES, PAYMENT_VIEWS, SCREENS} from '../../helpers/contants';
 import {
   getPendingPayments,
   getInitials,
@@ -27,27 +29,11 @@ import {
   truncateAddress
 } from '../../helpers/utils';
 import {ERROR_MESSAGES} from '../../helpers/errors';
-import {cardStyles, COLORS} from '../../helpers/style';
+import {cardStyles} from '../../helpers/style';
 
 const useStyles = makeStyles((theme) => ({
   container: {
     width: '100%',
-  },
-  header: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    position: 'sticky',
-    top: 0,
-    zIndex: 1,
-    padding: theme.spacing(1.25, 0),
-  },
-  headerInfo: {
-    fontSize: 14,
-    fontWeight: 'normal',
-    lineHeight: 1.6,
-    opacity: 0.6,
   },
   content: {
     padding: theme.spacing(1.5, 2, 2),
@@ -55,8 +41,32 @@ const useStyles = makeStyles((theme) => ({
       width: '100%',
     }
   },
+  footerActions: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    position: 'sticky',
+    bottom: 0,
+    zIndex: 1,
+    padding: theme.spacing(1.25, 0),
+    background: '#fff',
+    boxShadow: 'inset 0 1px 0px rgba(0, 0, 0, 0.1)',
+  },
+  headerInfo: {
+    fontSize: 14,
+    fontWeight: 'normal',
+    lineHeight: 1.6,
+    opacity: 0.6,
+  },
+  toggleContainer: {
+    width: '100%',
+    display: 'flex',
+    margin: 0,
+    justifyContent: 'space-between',
+  },
   payButton: {
-    minWidth: 130,
+    width: '100%',
   },
   bold: {
     fontWeight: 'bold',
@@ -79,7 +89,7 @@ const useStyles = makeStyles((theme) => ({
     fontSize: 12,
     lineHeight: 1.5,
     marginBottom: theme.spacing(1),
-  }
+  },
 }));
 
 export default () => {
@@ -92,6 +102,7 @@ export default () => {
   const [selectedPayments, setSelectedPayments] = useState([]);
   const [currentFilter, setCurrentFilter] = useState(null);
   const [search, setSearch] = useState('');
+  const [select, setSelect] = useState(true);
 
   useEffect(() => {
     // Load payments
@@ -108,6 +119,12 @@ export default () => {
     getTransactions().catch(() => {
     });
   }, []);
+
+  useEffect(() => {
+    if(!select && selectedPayments && selectedPayments.length) {
+      setSelectedPayments([]);
+    }
+  }, [select]);
 
   const togglePayment = (payment, groupIdx) => {
     let newSelectPayments = [...selectedPayments];
@@ -145,6 +162,14 @@ export default () => {
     });
   };
 
+  const onClickPayment = (payment, groupIdx) => {
+    if(select) {
+      togglePayment(payment, groupIdx);
+    } else {
+
+    }
+  };
+
   useEffect(() => {
     setSelectedPayments(getPendingPayments(selectedPayments, transactions));
   }, [transactions]);
@@ -174,22 +199,24 @@ export default () => {
                       onSearch={value => setSearch(value || '')}
                       onAdd={onAddPayment} />
 
-        {(selectedPayments || []).length && (
-          <div className={classes.header}>
-            <Button type="button"
-                    color="primary"
-                    variant="contained"
-                    className={classes.payButton}
-                    disabled={!(selectedPayments || []).length}
-                    onClick={onPay}>
-              Pay
-            </Button>
-
-            <div className={classes.headerInfo}>
-              {(selectedPayments || []).length} of {(pendingPayments || []).length} selected
-            </div>
-          </div>
-        ) || null}
+        {/*
+        <FormControlLabel
+          control={
+            <Switch
+              name="select_mode"
+              color="secondary"
+              checked={select}
+              onChange={() => setSelect(!select)}
+            />
+          }
+          label="Multiselect payments"
+          labelPlacement="start"
+          className={classes.toggleContainer}
+          classes={{
+            label: classes.settingsLabel,
+          }}
+        />
+        */}
 
         {loading && (
           <div className={classes.loading}>
@@ -224,7 +251,7 @@ export default () => {
 
                             return (
                               <Card className={clsx(cardClasses.container, {'selected': selectedPayments.findIndex(i => i.index === groupIdx) > -1})}
-                                    onClick={() => !transaction && togglePayment(payment, groupIdx)}>
+                                    onClick={() => !transaction && onClickPayment(payment, groupIdx)}>
                                 <CardContent className={cardClasses.content}>
                                   <Avatar
                                     className={cardClasses.avatar}>{getInitials(contact && contact.name || payment.name)}</Avatar>
@@ -244,9 +271,11 @@ export default () => {
                                     <Grid container
                                           direction="row"
                                           justify="space-between">
-                                      <div className={cardClasses.subheader}>
-                                        {truncateAddress(payment.address)}
-                                      </div>
+                                      <Copy text={payment.address}>
+                                        <div className={cardClasses.subheader}>
+                                          {truncateAddress(payment.address)}
+                                        </div>
+                                      </Copy>
 
                                       <div className={cardClasses.subheader} style={{whiteSpace: 'nowrap'}}>
                                         {currency && (
@@ -329,6 +358,24 @@ export default () => {
             )}
           </>
         )}
+
+        {(select && selectedPayments.length > 0) && (
+          <div className={classes.footerActions}>
+            <Button type="button"
+                    color="primary"
+                    variant="contained"
+                    className={classes.payButton}
+                    disabled={!(selectedPayments || []).length}
+                    onClick={onPay}>
+              Pay
+            </Button>
+            {/*
+            <div className={classes.headerInfo}>
+              {(selectedPayments || []).length} of {(pendingPayments || []).length} selected
+            </div>
+            */}
+          </div>
+        ) || null}
       </div>
     </div>
   );

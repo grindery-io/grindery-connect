@@ -1,14 +1,11 @@
 import React, {useContext, useEffect, useState} from 'react';
 import {makeStyles} from '@material-ui/core/styles';
 import {
-  AppBar,
   Avatar,
   Card,
   CardContent,
   CircularProgress,
   Grid,
-  Tabs,
-  Tab
 } from '@material-ui/core';
 import {Alert} from '@material-ui/lab';
 import clsx from 'clsx';
@@ -17,6 +14,7 @@ import Decimal from 'decimal.js';
 import Web3 from 'web3';
 import _ from 'lodash';
 
+import Copy from '../shared/Copy';
 import FilterTabs from '../shared/FilterTabs';
 import SearchBox from '../shared/SearchBox';
 
@@ -32,9 +30,9 @@ import {
 import {ERROR_MESSAGES} from '../../helpers/errors';
 import {cardStyles} from '../../helpers/style';
 import {
-  DIALOG_ACTIONS, ADDRESS_IL_SENDER,
-  ADDRESS_TIM_RECIPIENT, TRANSACTION_DIRECTIONS,
-  TRANSACTION_VIEWS, ADDRESS_DAVID_RECIPIENT, ADDRESS_EXAMPLE
+  DIALOG_ACTIONS,
+  TRANSACTION_DIRECTIONS,
+  TRANSACTION_VIEWS
 } from '../../helpers/contants';
 
 import arrowLeft from '../../images/long-arrow-left.svg';
@@ -118,44 +116,8 @@ export default () => {
   };
 
   const FILTERS = [TRANSACTION_VIEWS.ALL, TRANSACTION_VIEWS.RECEIVED, TRANSACTION_VIEWS.SENT];
-  const currentAddress = addresses && addresses[0] || null;
 
-  let RECIPIENT_ADDRESSES = _.flatten([ADDRESS_TIM_RECIPIENT, ADDRESS_DAVID_RECIPIENT].map(i => ([i, Web3.utils.toChecksumAddress(i)])));
-
-  let filteredTransactions = [
-    ...((
-      currentAddress && (
-        RECIPIENT_ADDRESSES.includes(currentAddress) ||
-        RECIPIENT_ADDRESSES.includes(Web3.utils.toChecksumAddress(currentAddress))
-      )
-    )?[
-      {
-        from: ADDRESS_IL_SENDER,
-        paid_at: moment.utc().format(),
-        sender: 'InboundLabs',
-        payment: {
-          amount: 100,
-          address: ADDRESS_TIM_RECIPIENT,
-          email: 'tim.delhaes@gmail.com',
-          due_date: moment.utc().format(),
-          details: 'InboundLabs Consultancy',
-          name: 'Tim Delhaes',
-        },
-        direction: TRANSACTION_DIRECTIONS.IN,
-      },
-    ]:[]),
-    /*
-    {
-      from: ADDRESS_EXAMPLE,
-      paid_at: moment.utc().format(),
-      sender: 'InboundLabs',
-      payments: payments,
-    },
-    */
-    ...transactions,
-  ];
-
-  filteredTransactions = filteredTransactions.filter(i => {
+  let filteredTransactions = transactions.filter(i => {
     if(currentFilter === TRANSACTION_VIEWS.RECEIVED) {
       return i.direction === TRANSACTION_DIRECTIONS.IN;
     } else if(currentFilter === TRANSACTION_VIEWS.SENT) {
@@ -261,8 +223,8 @@ export default () => {
                             let transactorName = null,
                               transactorAddress = null;
                             if(transaction.direction === TRANSACTION_DIRECTIONS.IN) {
-                              transactorName = transaction.sender || 'InboundLabs';
-                              transactorAddress = transaction.from || ADDRESS_IL_SENDER;
+                              transactorName = transaction.sender;
+                              transactorAddress = transaction.from;
                             } else {
                               transactorName = (contact && contact.name) || (payment && payment.name);
                               transactorAddress = (contact && contact.address) || (payment && payment.address);
@@ -297,9 +259,11 @@ export default () => {
                                     <Grid container
                                           direction="row"
                                           justify="space-between">
-                                      <div className={cardClasses.subheader}>
-                                        {truncateAddress(transactorAddress)}
-                                      </div>
+                                      <Copy text={transactorAddress}>
+                                        <div className={cardClasses.subheader}>
+                                          {truncateAddress(transactorAddress)}
+                                        </div>
+                                      </Copy>
 
                                       <div className={cardClasses.subheader} style={{whiteSpace: 'nowrap'}}>
                                         {paymentDisplayValue && transaction.currency && (
